@@ -1,5 +1,8 @@
 import re
 import os
+import sys
+import argparse
+from pathlib import Path
 import pdfplumber
 import pandas as pd
 
@@ -11,7 +14,6 @@ num_re = re.compile(r"\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})")
 # Detect day with month like '01/JUN' (common in bank statements)
 day_re = re.compile(r"\b(?:0[1-9]|[12][0-9]|3[01])/[A-Za-z]{3}\b")
 
-PDF_PATH = r"C:\\Valarix\\pdf_to_excel\\Test\\BBVA.pdf"
 
 def extract_lines(pdf_path):
     lines = []
@@ -279,7 +281,19 @@ def is_boilerplate(s: str) -> bool:
 
 
 if __name__ == '__main__':
-    all_lines = extract_lines(PDF_PATH)
+    parser = argparse.ArgumentParser(description='Parse a bank statement PDF into Excel')
+    parser.add_argument('pdf', help='Path to the PDF file to parse')
+    args = parser.parse_args()
+
+    pdf_path = Path(args.pdf)
+    if not pdf_path.exists():
+        print(f"Error: file not found: {pdf_path}")
+        sys.exit(1)
+    if pdf_path.suffix.lower() != '.pdf':
+        print(f"Error: only PDF files are allowed: {pdf_path}")
+        sys.exit(1)
+
+    all_lines = extract_lines(str(pdf_path))
     # process sequentially to extract transactions and table key-values
     transactions, tables = process_lines(all_lines)
     # build transaction records with requested columns
