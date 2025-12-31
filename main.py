@@ -20,10 +20,153 @@ BANK_CONFIGS = {
             "saldo": (539, 593),           # Columna Saldo
         }
     },
-    # Add more banks here as needed
+    
+    "Santander": {
+        "name": "Santander",
+        "columns": {
+            "fecha": (18, 52),             # Columna Fecha de Operación
+            "descripcion": (107, 149),     # Columna Descripción
+            "cargos": (465, 492),          # Columna Cargos
+            "abonos": (377, 411),          # Columna Abonos
+            "saldo": (554, 573),           # Columna Saldo
+        }
+    },
+
+    "Scotiabank": {
+        "name": "Scotiabank",
+        "columns": {
+            "fecha": (56, 79),             # Columna Fecha de Operación
+            "descripcion": (152, 189),     # Columna Descripción
+            "cargos": (465, 488),          # Columna Cargos
+            "abonos": (392, 426),          # Columna Abonos
+            "saldo": (539, 561),           # Columna Saldo
+        }
+    },
+
+    "Inbursa": {
+        "name": "Inbursa",
+        "columns": {
+            "fecha": (16, 42),             # Columna Fecha de Operación
+            "descripcion": (241, 283),     # Columna Descripción
+            "cargos": (395, 427),          # Columna Cargos
+            "abonos": (462, 494),          # Columna Abonos
+            "saldo": (526, 552),           # Columna Saldo
+        }
+    },
+
+    "Konfio": {
+        "name": "Konfio",
+        "columns": {
+            "fecha": (59, 89),             # Columna Fecha de Operación
+            "descripcion": (170, 228),     # Columna Descripción
+            "cargos": (354, 375),          # Columna Cargos
+            "abonos": (527, 548),          # Columna Abonos
+        }
+    },
+
+    "Banregio": {
+        "name": "Banregio",
+        "columns": {
+            "fecha": (35, 45),             # Columna Fecha de Operación
+            "descripcion": (50, 300),     # Columna Descripción
+            "cargos": (350, 399),          # Columna Cargos
+            "abonos": (440, 475),          # Columna Abonos
+            "saldo": (520, 573),           # Columna Saldo
+        }
+    },
+    
+     "Banorte": {
+        "name": "Banorte",
+        "columns": {
+            "fecha": (54, 85),             # Columna Fecha de Operación
+            "descripcion": (87, 300),     # Columna Descripción
+            "cargos": (431, 489),          # Columna Cargos
+            "abonos": (353, 420),          # Columna Abonos
+            "saldo": (533, 553),           # Columna Saldo
+        }
+    },
+
+     "Banbajío": {
+        "name": "Banbajío",
+        "columns": {
+            "fecha": (19, 43),             # Columna Fecha de Operación
+            "descripcion": (135, 300),     # Columna Descripción
+            "cargos": (474, 525),          # Columna Cargos
+            "abonos": (395, 451),          # Columna Abonos
+            "saldo": (530, 585),           # Columna Saldo
+        }
+    },
+    
+    "Banamex": {
+        "name": "Banamex",
+        "columns": {
+            "fecha": (17, 45),             # Columna Fecha de Operación
+            "descripcion": (55, 260),      # Columna Descripción (ampliado para capturar mejor)
+            "cargos": (275, 316),          # Columna Cargos (ampliado ligeramente)
+            "abonos": (345, 395),          # Columna Abonos (ampliado ligeramente)
+            "saldo": (425, 472),           # Columna Saldo (ampliado ligeramente)
+        }
+    },
+        # Add more banks here as needed
 }
 
 DEFAULT_BANK = "BBVA"
+
+# Bank detection keywords (case insensitive)
+# Order matters: more specific patterns should come first
+BANK_KEYWORDS = {
+    
+    "BBVA": [
+        r"\bBBVA\b",
+        r"\bBBVA\s+BANCOMER\b",
+        r"ESTADO\s+DE\s+CUENTA\s+MAESTRA\s+PYME\s+BBVA",
+        r"BBVA\s+ADELANTE",
+    ],
+    "Banamex": [
+        r"\bDIGITEM\b",  # Palabra muy específica de Banamex
+        r"\bBANAMEX\b",
+        r"\bCITIBANAMEX\b",
+        r"\bCITI\s+BANAMEX\b",
+    ],
+    "Banbajío": [
+        r"\bBANBAJ[IÍ]O\b",
+        r"\bBANCO\s+DEL\s+BAJ[IÍ]O\b",
+    ],
+    "Banorte": [
+        r"\bBANORTE\b",
+        r"\bBANCO\s+MACRO\s+BANORTE\b",
+    ],
+    "Banregio": [
+        r"\bBANREGIO\b",
+        r"\bBANCO\s+REGIONAL\b",
+    ],
+    "Clara": [
+        r"\bCLARA\b",
+        r"\bBANCO\s+CLARA\b",
+    ],
+    "Konfio": [
+        r"\bKONFIO\b",
+        r"\bBANCO\s+KONFIO\b",
+    ],
+    "Inbursa": [
+        r"\bINBURSA\b",
+        r"\bBANCO\s+INBURSA\b",
+    ],
+    "Santander": [
+        r"\bSANTANDER\b",
+        r"\bBANCO\s+SANTANDER\b",
+        r"\bSANTANDER\s+MEXICANO\b",
+    ],
+    "Scotiabank": [
+        r"\bSCOTIABANK\b",
+        r"\bSCOTIA\s+BANK\b",
+        r"\bBANCO\s+SCOTIABANK\b",
+    ],
+    "Hey": [
+        r"\bHEY\s+BANCO\b",
+        r"\bHEY\b",
+    ],
+}
 
 # Decimal / thousands amount regex (module-level so helpers can use it)
 DEC_AMOUNT_RE = re.compile(r"\d{1,3}(?:[\.,\s]\d{3})*(?:[\.,]\d{2})")
@@ -98,6 +241,53 @@ BANK_CONFIGS = {
     
     except Exception as e:
         print(f"❌ Error: {e}")
+
+
+def detect_bank_from_pdf(pdf_path: str) -> str:
+    """
+    Detect the bank from PDF content by reading line by line.
+    Returns the bank name if detected, otherwise returns DEFAULT_BANK.
+    """
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            # Read first few pages (usually bank name appears early)
+            max_pages_to_check = min(3, len(pdf.pages))
+            
+            for page_num in range(max_pages_to_check):
+                page = pdf.pages[page_num]
+                text = page.extract_text()
+                
+                if not text:
+                    continue
+                
+                # Split into lines and check each line
+                lines = text.split('\n')
+                for line in lines:
+                    line_clean = line.strip()
+                    if not line_clean:
+                        continue
+                    
+                    # Check each bank's keywords
+                    for bank_name, keywords in BANK_KEYWORDS.items():
+                        for keyword_pattern in keywords:
+                            if re.search(keyword_pattern, line_clean, re.I):
+                                print(f"🏦 Banco detectado: {bank_name} (encontrado en línea: {line_clean[:50]}...)")
+                                return bank_name
+                    
+                    # Also check if line contains bank name directly (case insensitive)
+                    line_upper = line_clean.upper()
+                    for bank_name in BANK_KEYWORDS.keys():
+                        # Check for exact bank name match (as whole word)
+                        if re.search(rf'\b{re.escape(bank_name.upper())}\b', line_upper):
+                            print(f"🏦 Banco detectado: {bank_name} (encontrado en línea: {line_clean[:50]}...)")
+                            return bank_name
+    
+    except Exception as e:
+        print(f"⚠️  Error al detectar banco: {e}")
+    
+    # If no bank detected, return default
+    print(f"⚠️  No se pudo detectar el banco, usando: {DEFAULT_BANK}")
+    return DEFAULT_BANK
 
 
 def extract_text_from_pdf(pdf_path: str) -> list:
@@ -288,17 +478,31 @@ def main():
     output_excel = os.path.splitext(pdf_path)[0] + ".xlsx"
 
     print("📄 Reading PDF...")
+    
+    # Detect bank from PDF content (read PDF directly for detection)
+    detected_bank = detect_bank_from_pdf(pdf_path)
+    
+    # Now extract full data
     extracted_data = extract_text_from_pdf(pdf_path)
     # split pages into lines
     pages_lines = split_pages_into_lines(extracted_data)
 
-    # Get bank config (default to BBVA)
-    bank_config = BANK_CONFIGS.get(DEFAULT_BANK)
+    # Get bank config based on detected bank
+    bank_config = BANK_CONFIGS.get(detected_bank)
     if not bank_config:
-        print(f"⚠️  Bank config not found for {DEFAULT_BANK}, using BBVA defaults")
-        bank_config = BANK_CONFIGS["BBVA"]
+        print(f"⚠️  Bank config not found for {detected_bank}, using generic fallback")
+        # Create a generic config for non-BBVA banks
+        # They will use raw text extraction instead of coordinate-based
+        bank_config = {
+            "name": detected_bank,
+            "columns": {}  # Empty columns means will use raw extraction
+        }
+    else:
+        # Ensure the name matches the detected bank
+        bank_config = bank_config.copy()
+        bank_config["name"] = detected_bank
     
-    columns_config = bank_config["columns"]
+    columns_config = bank_config.get("columns", {})
 
     # find where movements start (first line anywhere that matches a date or contains header keywords)
     day_re = re.compile(r"\b(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}\b")
@@ -360,17 +564,89 @@ def main():
             row_data = extract_movement_row(row_words, columns_config)
 
             # Determine if this row starts a new movement (contains a date)
-            # A new movement begins when the 'fecha' column contains a date token.
-            fecha_val = str(row_data.get('fecha') or '')
-            has_date = bool(date_pattern.search(fecha_val))
+            # If columns_config is empty, check all words for dates
+            if not columns_config:
+                # Check all words in the row for dates
+                all_text = ' '.join([w.get('text', '') for w in row_words])
+                has_date = bool(date_pattern.search(all_text))
+                if has_date:
+                    # Create a basic row_data structure
+                    row_data = {'raw': all_text, '_amounts': row_data.get('_amounts', [])}
+            else:
+                # A new movement begins when the 'fecha' column contains a date token.
+                fecha_val = str(row_data.get('fecha') or '')
+                has_date = bool(date_pattern.search(fecha_val))
 
             if has_date:
                 row_data['page'] = page_num
                 movement_rows.append(row_data)
             else:
-                # Continuation row: append description-like text to previous movement if exists
+                # Continuation row: append description-like text and amounts to previous movement if exists
                 if movement_rows:
                     prev = movement_rows[-1]
+                    
+                    # First, capture amounts from continuation row and assign to appropriate columns
+                    cont_amounts = row_data.get('_amounts', [])
+                    if cont_amounts and columns_config:
+                        # Get description range to exclude amounts from it
+                        descripcion_range = None
+                        if 'descripcion' in columns_config:
+                            x0, x1 = columns_config['descripcion']
+                            descripcion_range = (x0, x1)
+                        
+                        # Get column ranges for numeric columns
+                        col_ranges = {}
+                        for col in ('cargos', 'abonos', 'saldo'):
+                            if col in columns_config:
+                                x0, x1 = columns_config[col]
+                                col_ranges[col] = (x0, x1)
+                        
+                        # Assign amounts from continuation row
+                        tolerance = 10
+                        for amt_text, center in cont_amounts:
+                            # Skip if amount is within description range
+                            if descripcion_range and descripcion_range[0] <= center <= descripcion_range[1]:
+                                continue
+                            
+                            # Find which numeric column this amount belongs to
+                            assigned = False
+                            for col in ('cargos', 'abonos', 'saldo'):
+                                if col in col_ranges:
+                                    x0, x1 = col_ranges[col]
+                                    if (x0 - tolerance) <= center <= (x1 + tolerance):
+                                        # Only assign if the column is empty or if this is a better match
+                                        existing = prev.get(col) or ''
+                                        if not existing or amt_text not in existing:
+                                            if existing:
+                                                prev[col] = (existing + ' ' + amt_text).strip()
+                                            else:
+                                                prev[col] = amt_text
+                                        assigned = True
+                                        break
+                            
+                            # If not assigned by range, use proximity as fallback
+                            if not assigned and col_ranges:
+                                valid_cols = {}
+                                for col in col_ranges.keys():
+                                    x0, x1 = col_ranges[col]
+                                    if center >= (x0 - 20) and center <= (x1 + 20):
+                                        col_center = (x0 + x1) / 2
+                                        valid_cols[col] = abs(center - col_center)
+                                
+                                if valid_cols:
+                                    nearest = min(valid_cols.keys(), key=lambda c: valid_cols[c])
+                                    if not descripcion_range or not (descripcion_range[0] <= center <= descripcion_range[1]):
+                                        existing = prev.get(nearest) or ''
+                                        if not existing or amt_text not in existing:
+                                            if existing:
+                                                prev[nearest] = (existing + ' ' + amt_text).strip()
+                                            else:
+                                                prev[nearest] = amt_text
+                    
+                    # Also merge amounts list for later processing
+                    prev_amounts = prev.get('_amounts', [])
+                    prev['_amounts'] = prev_amounts + cont_amounts
+                    
                     # Collect possible text pieces from this row (prefer descripcion, then liq, then any other text)
                     cont_parts = []
                     for k in ('descripcion', 'fecha'):
@@ -379,7 +655,7 @@ def main():
                             cont_parts.append(str(v))
                     # Also capture any stray text in other columns
                     for k, v in row_data.items():
-                        if k in ('descripcion', 'fecha', 'cargos', 'abonos', 'saldo', 'page'):
+                        if k in ('descripcion', 'fecha', 'cargos', 'abonos', 'saldo', 'page', '_amounts'):
                             continue
                         if v:
                             cont_parts.append(str(v))
@@ -399,38 +675,244 @@ def main():
                     # No previous movement to attach to; ignore or treat as header
                     continue
 
-    # prepare DataFrames
-    df_summary = pd.DataFrame({'informacion': summary_lines})
+    # Process summary lines to format them properly
+    def format_summary_line(line):
+        """Format a summary line and return list of (titulo, dato) tuples.
+        Intelligently separates title:value pairs based on data type changes.
+        """
+        line = line.strip()
+        if not line:
+            return []
+        
+        results = []
+        
+        # Pattern for "Periodo DEL [date] AL [date]" (case insensitive)
+        periodo_pattern = re.compile(r'periodo\s+del\s+(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\s+al\s+(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})', re.I)
+        match = periodo_pattern.search(line)
+        if match:
+            fecha_inicio = match.group(1)
+            fecha_fin = match.group(2)
+            results.append(('Periodo DEL:', fecha_inicio))
+            results.append(('AL:', fecha_fin))
+            return results
+        
+        # Pattern for "No. de Cuenta [number]" or "No. de Cliente [number]" (case insensitive)
+        cuenta_pattern = re.compile(r'(no\.?\s*de\s+(?:cuenta|cliente))\s+(.+)', re.I)
+        match = cuenta_pattern.search(line)
+        if match:
+            titulo = match.group(1).strip()
+            # Capitalize properly: "No. de Cuenta" or "No. de Cliente"
+            if 'cuenta' in titulo.lower():
+                titulo = 'No. de Cuenta'
+            elif 'cliente' in titulo.lower():
+                titulo = 'No. de Cliente'
+            dato = match.group(2).strip()
+            results.append((titulo + ':', dato))
+            return results
+        
+        # Pattern for lines with "/" that separate multiple concepts (e.g., "Retiros / Cargos (-) 73 1,120,719.64")
+        # Look for pattern: "Title1 / Title2 (optional) number1 number2"
+        # More flexible: allows for optional parentheses and various number formats
+        slash_pattern = re.compile(r'^([A-Za-z][A-Za-z\s]+?)\s*/\s*([A-Za-z][A-Za-z\s]*(?:\([^)]+\))?)\s+(\d+(?:,\d{3})*(?:\.\d{2})?)\s+([\d,\.\s]+)$', re.I)
+        match = slash_pattern.search(line)
+        if match:
+            title1 = match.group(1).strip()
+            title2 = match.group(2).strip()
+            value1 = match.group(3).strip()
+            value2 = match.group(4).strip()
+            results.append((title1 + ':', value1))
+            results.append((title2 + ':', value2))
+            return results
+        
+        # Check if line is likely a company name/address (all caps, or contains common business terms)
+        # Don't split these
+        is_company_name = (
+            line.isupper() or 
+            re.search(r'\b(SA DE CV|S\.A\.|S\.A\. DE C\.V\.|S\.R\.L\.|INC\.|CORP\.|LLC)\b', line, re.I) or
+            (len(line.split()) > 3 and not re.search(r'\d', line))  # Long text without numbers
+        )
+        if is_company_name:
+            results.append((line, ''))
+            return results
+        
+        # Pattern for lines that already have a colon
+        if ':' in line:
+            parts = line.split(':', 1)
+            if len(parts) == 2:
+                titulo = parts[0].strip()
+                dato = parts[1].strip()
+                results.append((titulo + ':', dato))
+                return results
+        
+        # Intelligent splitting: detect data type changes
+        # Split when we transition from text to number, or number to text
+        tokens = line.split()
+        if len(tokens) < 2:
+            results.append((line, ''))
+            return results
+        
+        # Find split points based on data type changes
+        split_points = []
+        for i in range(len(tokens) - 1):
+            current = tokens[i]
+            next_token = tokens[i + 1]
+            
+            # Check if current is text and next is number (or vice versa)
+            # Better number detection: allows for formatted numbers with commas and decimals
+            # Pattern: digits with optional thousands separators (commas) and optional decimal part
+            num_pattern = re.compile(r'^\d{1,3}(?:,\d{3})*(?:\.\d{2})?$|^\d+(?:\.\d{2})?$')
+            current_is_num = bool(num_pattern.match(current))
+            next_is_num = bool(num_pattern.match(next_token))
+            
+            # Also check for date patterns
+            current_is_date = bool(re.match(r'^\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}$', current))
+            next_is_date = bool(re.match(r'^\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}$', next_token))
+            
+            # Split if: text->number, number->text, or text->date
+            if (not current_is_num and not current_is_date and (next_is_num or next_is_date)):
+                split_points.append(i + 1)
+            elif (current_is_num or current_is_date) and not next_is_num and not next_is_date:
+                # Number/date followed by text - might be a new field
+                # But be careful, don't split if it's part of a longer description
+                if i < len(tokens) - 2:  # Not the last token
+                    split_points.append(i + 1)
+        
+        # If we found split points, use them
+        if split_points:
+            # Use first split point
+            split_idx = split_points[0]
+            titulo = ' '.join(tokens[:split_idx]).strip()
+            dato = ' '.join(tokens[split_idx:]).strip()
+            
+            # Clean up título (remove trailing special chars, add colon)
+            titulo = re.sub(r'[:\-]+$', '', titulo).strip()
+            if not titulo.endswith(':'):
+                titulo += ':'
+            
+            results.append((titulo, dato))
+            return results
+        
+        # Fallback: try to split on multiple spaces or first number
+        kv_match = re.match(r'^([A-Za-z][A-Za-z\s]+(?:de|del|la|el|los|las)?)\s{2,}(.+)$', line, re.I)
+        if kv_match:
+            titulo = kv_match.group(1).strip()
+            dato = kv_match.group(2).strip()
+            if not titulo.endswith(':'):
+                titulo += ':'
+            results.append((titulo, dato))
+            return results
+        
+        # Try to split on first number or date
+        num_match = re.search(r'(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}|[\d,\.]+)', line)
+        if num_match:
+            split_pos = num_match.start()
+            if split_pos > 0:
+                titulo = line[:split_pos].strip()
+                dato = line[split_pos:].strip()
+                titulo = re.sub(r'[:\-]+$', '', titulo).strip()
+                if not titulo.endswith(':'):
+                    titulo += ':'
+                results.append((titulo, dato))
+                return results
+        
+        # If no pattern matches, return as título with empty dato
+        results.append((line, ''))
+        return results
+    
+    # Process all summary lines
+    summary_rows = []
+    for line in summary_lines:
+        formatted = format_summary_line(line)
+        summary_rows.extend(formatted)
+    
+    # Create DataFrame with two columns: Título and Dato
+    if summary_rows:
+        df_summary = pd.DataFrame(summary_rows, columns=['Título', 'Dato'])
+    else:
+        df_summary = pd.DataFrame({'Título': [], 'Dato': []})
     
     # Reassign amounts to cargos/abonos/saldo by proximity when needed
     if movement_rows:
-        # prepare column centers
+        # prepare column centers and ranges
         col_centers = {}
+        col_ranges = {}
+        descripcion_range = None
+        
+        # Get description range to exclude amounts from it
+        if 'descripcion' in columns_config:
+            x0, x1 = columns_config['descripcion']
+            descripcion_range = (x0, x1)
+        
         for col in ('cargos', 'abonos', 'saldo'):
             if col in columns_config:
                 x0, x1 = columns_config[col]
                 col_centers[col] = (x0 + x1) / 2
+                col_ranges[col] = (x0, x1)
 
         for r in movement_rows:
             amounts = r.get('_amounts', [])
             if not amounts:
                 continue
 
+            # Check if columns already have values from initial extraction
+            # If they do, we should preserve them unless we find better matches
+            existing_cargos = r.get('cargos', '').strip()
+            existing_abonos = r.get('abonos', '').strip()
+            existing_saldo = r.get('saldo', '').strip()
+            
             # If columns already have numbers, keep them but prefer reassignment
-            # We'll assign each detected amount to the nearest numeric column
+            # We'll assign each detected amount to the appropriate numeric column
+            # ONLY if it's within the column's coordinate range
             for amt_text, center in amounts:
-                # find nearest column among available numeric columns
-                if not col_centers:
+                # Skip if amount is within description range (don't assign to numeric columns)
+                if descripcion_range and descripcion_range[0] <= center <= descripcion_range[1]:
                     continue
-                nearest = min(col_centers.keys(), key=lambda c: abs(center - col_centers[c]))
-                # set or append
-                existing = r.get(nearest) or ''
-                if existing:
-                    # avoid duplicating the same token
-                    if amt_text not in existing:
-                        r[nearest] = (existing + ' ' + amt_text).strip()
-                else:
-                    r[nearest] = amt_text
+                
+                # Find which numeric column this amount belongs to based on coordinate range
+                # Use a small tolerance for edge cases (amounts near column boundaries)
+                tolerance = 10
+                assigned = False
+                for col in ('cargos', 'abonos', 'saldo'):
+                    if col in col_ranges:
+                        x0, x1 = col_ranges[col]
+                        # Check with tolerance to handle amounts slightly outside the range
+                        if (x0 - tolerance) <= center <= (x1 + tolerance):
+                            # Amount is within this column's range (with tolerance)
+                            existing = r.get(col) or ''
+                            # Check if this amount is already in the column (to avoid duplicates)
+                            if existing and amt_text in existing:
+                                assigned = True
+                                break
+                            # Only assign if column is empty or if this amount is not already there
+                            if not existing or amt_text not in existing:
+                                if existing:
+                                    r[col] = (existing + ' ' + amt_text).strip()
+                                else:
+                                    r[col] = amt_text
+                            assigned = True
+                            break
+                
+                # If not assigned by range, use proximity as fallback (but still exclude description range)
+                if not assigned and col_centers:
+                    # Calculate distances, but only consider columns that are reasonably close
+                    valid_cols = {}
+                    for col in col_centers.keys():
+                        if col in col_ranges:
+                            x0, x1 = col_ranges[col]
+                            # Only consider if center is reasonably close to the column
+                            if center >= (x0 - 20) and center <= (x1 + 20):
+                                valid_cols[col] = abs(center - col_centers[col])
+                    
+                    if valid_cols:
+                        nearest = min(valid_cols.keys(), key=lambda c: valid_cols[c])
+                        # Double check it's not in description range
+                        if not descripcion_range or not (descripcion_range[0] <= center <= descripcion_range[1]):
+                            existing = r.get(nearest) or ''
+                            if existing:
+                                if amt_text not in existing:
+                                    r[nearest] = (existing + ' ' + amt_text).strip()
+                            else:
+                                r[nearest] = amt_text
 
             # Remove amount tokens from descripcion if present
             if r.get('descripcion'):
@@ -439,11 +921,118 @@ def main():
             # cleanup helper key
             if '_amounts' in r:
                 del r['_amounts']
+        
+        # If columns_config was empty, we may have rows but without cargos/abonos/saldo
+        # Try to extract them from raw text or _amounts
+        if movement_rows and not columns_config and bank_config['name'] != 'BBVA':
+            has_saldo = 'saldo' in columns_config
+            for r in movement_rows:
+                # If row has 'raw', extract from it
+                if 'raw' in r and r.get('raw'):
+                    raw_text = str(r.get('raw'))
+                    amounts = DEC_AMOUNT_RE.findall(raw_text)
+                    if len(amounts) >= 3:
+                        r['cargos'] = amounts[-3]
+                        r['abonos'] = amounts[-2]
+                        if has_saldo:
+                            r['saldo'] = amounts[-1]
+                    elif len(amounts) == 2:
+                        r['abonos'] = amounts[0]
+                        if has_saldo:
+                            r['saldo'] = amounts[1]
+                    elif len(amounts) == 1:
+                        if has_saldo:
+                            r['saldo'] = amounts[0]
+                # If row has _amounts but no cargos/abonos/saldo, try to assign them
+                elif '_amounts' in r and r.get('_amounts'):
+                    amounts_list = [amt for amt, _ in r.get('_amounts', [])]
+                    if len(amounts_list) >= 3:
+                        r['cargos'] = amounts_list[-3]
+                        r['abonos'] = amounts_list[-2]
+                        if has_saldo:
+                            r['saldo'] = amounts_list[-1]
+                    elif len(amounts_list) == 2:
+                        r['abonos'] = amounts_list[0]
+                        if has_saldo:
+                            r['saldo'] = amounts_list[1]
+                    elif len(amounts_list) == 1:
+                        if has_saldo:
+                            r['saldo'] = amounts_list[0]
 
         df_mov = pd.DataFrame(movement_rows)
     else:
+        # No coordinate-based extraction available, use raw text extraction
         movement_entries = group_entries_from_lines(movements_lines)
         df_mov = pd.DataFrame({'raw': movement_entries})
+        
+        # For non-BBVA banks, try to extract Cargos, Abonos, Saldo from raw text
+        if bank_config['name'] != 'BBVA' and len(df_mov) > 0:
+            has_saldo = 'saldo' in columns_config
+            def extract_amounts_from_raw(raw_text):
+                """Extract Cargos, Abonos, and Saldo from raw text line."""
+                if not raw_text or not isinstance(raw_text, str):
+                    return {'cargos': None, 'abonos': None, 'saldo': None}
+                
+                # Find all amounts in the line
+                amounts = DEC_AMOUNT_RE.findall(str(raw_text))
+                
+                # Common patterns in bank statements:
+                # - Usually: Date Description Amount1 Amount2 Amount3
+                # - Or: Date Description Cargos Abonos Saldo
+                # - Or: Date Description Amount (could be any of the three)
+                
+                result = {'cargos': None, 'abonos': None, 'saldo': None}
+                
+                # If we have amounts, try to identify them
+                # Typically, the last amount is Saldo, and before that could be Cargos/Abonos
+                if len(amounts) >= 3:
+                    # Three amounts: likely Cargos, Abonos, Saldo
+                    result['cargos'] = amounts[-3]
+                    result['abonos'] = amounts[-2]
+                    if has_saldo:
+                        result['saldo'] = amounts[-1]
+                elif len(amounts) == 2:
+                    # Two amounts: could be Cargos/Abonos and Saldo, or just two of them
+                    # Check if there are keywords in the text
+                    text_lower = raw_text.lower()
+                    if 'cargo' in text_lower or 'retiro' in text_lower:
+                        result['cargos'] = amounts[0]
+                        if has_saldo:
+                            result['saldo'] = amounts[1]
+                    elif 'abono' in text_lower or 'deposito' in text_lower:
+                        result['abonos'] = amounts[0]
+                        if has_saldo:
+                            result['saldo'] = amounts[1]
+                    else:
+                        # Default: first is Abonos (more common), second is Saldo (if exists)
+                        result['abonos'] = amounts[0]
+                        if has_saldo:
+                            result['saldo'] = amounts[1]
+                        else:
+                            # If no saldo column, second amount could be cargos
+                            result['cargos'] = amounts[1]
+                elif len(amounts) == 1:
+                    # One amount: could be any of them, check keywords
+                    text_lower = raw_text.lower()
+                    if 'cargo' in text_lower or 'retiro' in text_lower:
+                        result['cargos'] = amounts[0]
+                    elif 'abono' in text_lower or 'deposito' in text_lower:
+                        result['abonos'] = amounts[0]
+                    else:
+                        # Default: assume it's Saldo (if exists), otherwise Abonos
+                        if has_saldo:
+                            result['saldo'] = amounts[0]
+                        else:
+                            result['abonos'] = amounts[0]
+                
+                return result
+            
+            # Extract amounts from raw text
+            extracted = df_mov['raw'].apply(extract_amounts_from_raw)
+            df_mov['cargos'] = extracted.apply(lambda x: x.get('cargos'))
+            df_mov['abonos'] = extracted.apply(lambda x: x.get('abonos'))
+            if has_saldo:
+                df_mov['saldo'] = extracted.apply(lambda x: x.get('saldo'))
 
     # Split combined fecha values into two separate columns: Fecha Oper and Fecha Liq
     # Works for coordinate-based extraction (column 'fecha') and for fallback raw lines ('raw').
@@ -592,23 +1181,38 @@ def main():
     if column_rename:
         df_mov = df_mov.rename(columns=column_rename)
 
+    # Rename "Fecha Liq" to "Fecha Liq." for BBVA if needed
+    if bank_config['name'] == 'BBVA' and 'Fecha Liq' in df_mov.columns:
+        df_mov = df_mov.rename(columns={'Fecha Liq': 'Fecha Liq.'})
+    
     # Reorder columns according to bank type
     if bank_config['name'] == 'BBVA':
-        # For BBVA: Fecha Oper, Fecha Liq, Descripción, Cargos, Abonos, Operación, Liquidación
-        desired_order = ['Fecha Oper', 'Fecha Liq', 'Descripción', 'Cargos', 'Abonos', 'Operación', 'Liquidación']
+        # For BBVA: Fecha Oper, Fecha Liq., Descripción, Cargos, Abonos, Operación, Liquidación
+        desired_order = ['Fecha Oper', 'Fecha Liq.', 'Descripción', 'Cargos', 'Abonos', 'Operación', 'Liquidación']
         # Filter to only include columns that exist in the dataframe
         desired_order = [col for col in desired_order if col in df_mov.columns]
         # Add any remaining columns that are not in desired_order
         other_cols = [c for c in df_mov.columns if c not in desired_order]
         df_mov = df_mov[desired_order + other_cols]
     else:
-        # For other banks: Fecha, Descripción, Cargos, Abonos, Saldo
-        desired_order = ['Fecha', 'Descripción', 'Cargos', 'Abonos', 'Saldo']
+        # For other banks: Fecha, Descripción, Cargos, Abonos, Saldo (if available)
+        # Build desired_order based on what columns are configured for this bank
+        desired_order = ['Fecha', 'Descripción', 'Cargos', 'Abonos']
+        
+        # Only include Saldo if it's in the bank's column configuration
+        if 'saldo' in columns_config:
+            desired_order.append('Saldo')
+        
+        # Remove 'saldo' column if it exists but shouldn't (e.g., for Konfio)
+        if 'saldo' in df_mov.columns and 'saldo' not in columns_config:
+            df_mov = df_mov.drop(columns=['saldo'])
+        if 'Saldo' in df_mov.columns and 'saldo' not in columns_config:
+            df_mov = df_mov.drop(columns=['Saldo'])
+        
         # Filter to only include columns that exist in the dataframe
         desired_order = [col for col in desired_order if col in df_mov.columns]
-        # Add any remaining columns that are not in desired_order
-        other_cols = [c for c in df_mov.columns if c not in desired_order]
-        df_mov = df_mov[desired_order + other_cols]
+        # Only keep the desired columns, remove all others
+        df_mov = df_mov[desired_order]
 
     print("📊 Exporting to Excel...")
     # write two sheets: summary and movements
