@@ -488,18 +488,31 @@ def main():
             # Find all amounts matching the decimal pattern
             amounts = DEC_AMOUNT_RE.findall(str(txt))
             if len(amounts) >= 2:
-                # Return first two amounts
+                # Check if both amounts are the same (normalize by removing separators)
+                # Normalize: remove commas, spaces, and compare numeric parts
+                def normalize_amount(amt):
+                    # Remove commas, spaces, keep only digits and decimal separator
+                    normalized = re.sub(r'[,\s]', '', amt)
+                    return normalized
+                
+                amt1_normalized = normalize_amount(amounts[0])
+                amt2_normalized = normalize_amount(amounts[1])
+                
+                if amt1_normalized == amt2_normalized:
+                    # If amounts are the same, return the same value for both columns
+                    return (amounts[0], amounts[0])
+                # Return first two amounts (first is LIQUIDACIÓN, second is OPERACIÓN)
                 return (amounts[0], amounts[1])
             elif len(amounts) == 1:
-                # Only one amount found
-                return (amounts[0], None)
+                # Only one amount found - assign it to both columns
+                return (amounts[0], amounts[0])
             else:
                 return (None, None)
         
         # Extract the two amounts from saldo column
         amounts = df_mov['saldo'].astype(str).apply(_extract_two_amounts)
-        df_mov['OPERACIÓN'] = amounts.apply(lambda t: t[1])  # First amount is OPERACIÓN
-        df_mov['LIQUIDACIÓN'] = amounts.apply(lambda t: t[0])  # Second amount is LIQUIDACIÓN
+        df_mov['OPERACIÓN'] = amounts.apply(lambda t: t[1])  # Second amount is OPERACIÓN
+        df_mov['LIQUIDACIÓN'] = amounts.apply(lambda t: t[0])  # First amount is LIQUIDACIÓN
         
         # Remove the original 'saldo' column
         df_mov = df_mov.drop(columns=['saldo'])
