@@ -2035,8 +2035,194 @@ def main():
 
     print("📊 Exporting to Excel...")
     
+    # Filter summary/info rows from Movements for Banamex
+    # These should not appear in Movements: "Saldo mínimo requerido", "COMISIONES COBRADAS"
+    if bank_config['name'] == 'Banamex':
+        print("🔍 Filtrando filas de información (Saldo mínimo requerido, COMISIONES COBRADAS) de Movements...")
+        info_rows_to_remove = []
+        
+        # Check each row in df_mov for summary/info rows
+        for idx, row in df_mov.iterrows():
+            # Get description from various possible column names
+            desc_col = None
+            for col in ['Descripción', 'Descripcion', 'descripcion', 'raw']:
+                if col in df_mov.columns:
+                    desc_col = col
+                    break
+            
+            if desc_col:
+                desc_text = str(row.get(desc_col, '')).upper()
+                
+                # Check if this is an info row that should be filtered
+                if 'SALDO MINIMO REQUERIDO' in desc_text or 'SALDO MÍNIMO REQUERIDO' in desc_text:
+                    info_rows_to_remove.append(idx)
+                    print(f"   ✅ Fila filtrada (Saldo mínimo requerido): {str(row.get(desc_col, ''))[:60]}...")
+                elif 'COMISIONES COBRADAS' in desc_text:
+                    info_rows_to_remove.append(idx)
+                    print(f"   ✅ Fila filtrada (Comisiones cobradas): {str(row.get(desc_col, ''))[:60]}...")
+        
+        # Remove info rows from Movements
+        if info_rows_to_remove:
+            print(f"   📝 Removiendo {len(info_rows_to_remove)} filas de información de Movements...")
+            df_mov = df_mov.drop(index=info_rows_to_remove).reset_index(drop=True)
+            print(f"   ✅ Filas removidas de Movements")
+    
+    # Filter Transferencias and DIGITEM rows from Movements for Banamex
+    # FIRST: Move rows below EMP rows to Transferencias
+    # THEN: Move EMP rows to DIGITEM
+    # This must be done BEFORE calculating totals for validation
+    df_transferencias = None
+    df_digitem = None
+    if bank_config['name'] == 'Banamex':
+        print("🔍 Filtrando filas Transferencias y DIGITEM de Movements...")
+        transferencias_rows = []
+        digitem_rows = []
+        rows_to_remove = []
+        
+        # Get description column name
+        desc_col = None
+        for col in ['Descripción', 'Descripcion', 'descripcion', 'raw']:
+            if col in df_mov.columns:
+                desc_col = col
+                break
+        
+        if desc_col:
+            # First pass: identify rows with "EMP" and rows immediately below them
+            emp_row_indices = []
+            transferencias_row_indices = []
+            
+            # Identify rows with "EMP" in description
+            for idx, row in df_mov.iterrows():
+                desc_text = str(row.get(desc_col, '')).upper()
+                if 'EMP' in desc_text:
+                    emp_row_indices.append(idx)
+            
+            # Identify rows immediately below EMP rows (Transferencias)
+            df_indices = df_mov.index.tolist()
+            for emp_idx in emp_row_indices:
+                if emp_idx in df_indices:
+                    emp_pos = df_indices.index(emp_idx)
+                    # Check if there's a next row
+                    if emp_pos + 1 < len(df_indices):
+                        next_idx = df_indices[emp_pos + 1]
+                        # Only add if it's not already an EMP row
+                        if next_idx not in emp_row_indices and next_idx not in transferencias_row_indices:
+                            transferencias_row_indices.append(next_idx)
+            
+            # Extract Transferencias rows (rows below EMP rows) - FIRST
+            if transferencias_row_indices:
+                print(f"🔍 Extrayendo {len(transferencias_row_indices)} filas para Transferencias...")
+                for idx in transferencias_row_indices:
+                    row = df_mov.loc[idx]
+                    
+                    # Get date
+                    fecha = ''
+                    for col in ['Fecha', 'Fecha Oper', 'fecha']:
+                        if col in df_mov.columns:
+                            fecha_val = row.get(col, '')
+                            if fecha_val:
+                                fecha = str(fecha_val).strip()
+                                break
+                    
+                    # Get description
+                    descripcion = str(row.get(desc_col, '')).strip() if desc_col else ''
+                    
+                    # Get importe (could be from Cargos, Abonos, or Saldo)
+                    importe = ''
+                    for col in ['Cargos', 'Abonos', 'Saldo', 'cargos', 'abonos', 'saldo']:
+                        if col in df_mov.columns:
+                            importe_val = row.get(col, '')
+                            if importe_val and str(importe_val).strip():
+                                importe = str(importe_val).strip()
+                                break
+                    
+                    if fecha and descripcion:
+                        transferencias_rows.append({
+                            'Fecha': fecha,
+                            'Descripción': descripcion,
+                            'Importe': importe
+                        })
+                        rows_to_remove.append(idx)
+                        print(f"   ✅ Fila Transferencias encontrada: {fecha} - {descripcion[:50]}... - {importe}")
+            
+            # Extract DIGITEM rows (rows with "EMP" in description) - AFTER Transferencias
+            if emp_row_indices:
+                print(f"🔍 Extrayendo {len(emp_row_indices)} filas para DIGITEM...")
+                for idx in emp_row_indices:
+                    row = df_mov.loc[idx]
+                    
+                    # Get date
+                    fecha = ''
+                    for col in ['Fecha', 'Fecha Oper', 'fecha']:
+                        if col in df_mov.columns:
+                            fecha_val = row.get(col, '')
+                            if fecha_val:
+                                fecha = str(fecha_val).strip()
+                                break
+                    
+                    # Get description
+                    descripcion = str(row.get(desc_col, '')).strip() if desc_col else ''
+                    
+                    # Get importe (could be from Cargos, Abonos, or Saldo)
+                    importe = ''
+                    for col in ['Cargos', 'Abonos', 'Saldo', 'cargos', 'abonos', 'saldo']:
+                        if col in df_mov.columns:
+                            importe_val = row.get(col, '')
+                            if importe_val and str(importe_val).strip():
+                                importe = str(importe_val).strip()
+                                break
+                    
+                    if fecha and descripcion and importe:
+                        digitem_rows.append({
+                            'Fecha': fecha,
+                            'Descripción': descripcion,
+                            'Importe': importe
+                        })
+                        rows_to_remove.append(idx)
+                        print(f"   ✅ Fila DIGITEM encontrada: {fecha} - {descripcion[:50]}... - {importe}")
+        
+        # Remove all filtered rows from Movements (Transferencias + DIGITEM)
+        if rows_to_remove:
+            print(f"   📝 Removiendo {len(rows_to_remove)} filas (Transferencias + DIGITEM) de Movements...")
+            df_mov = df_mov.drop(index=rows_to_remove).reset_index(drop=True)
+            print(f"   ✅ Filas removidas de Movements")
+        
+        # Create Transferencias DataFrame if there are rows
+        if transferencias_rows:
+            df_transferencias = pd.DataFrame(transferencias_rows)
+            print(f"✅ Se crearon {len(df_transferencias)} registros de Transferencias")
+        
+        # Create DIGITEM DataFrame if there are rows
+        if digitem_rows:
+            df_digitem = pd.DataFrame(digitem_rows)
+            print(f"✅ Se crearon {len(df_digitem)} registros de DIGITEM")
+            
+            # Add total row for DIGITEM
+            print("📊 Agregando fila de totales para DIGITEM...")
+            total_row_digitem = {
+                'Fecha': 'Total',
+                'Descripción': '',
+                'Importe': ''
+            }
+            
+            # Calculate total for Importe column
+            try:
+                importe_values = df_digitem['Importe'].apply(lambda x: normalize_amount_str(x) if pd.notna(x) and str(x).strip() else 0.0)
+                total_importe = importe_values.sum()
+                if total_importe > 0:
+                    total_row_digitem['Importe'] = f"{total_importe:,.2f}"
+            except Exception as e:
+                print(f"⚠️  Error al calcular total de Importe en DIGITEM: {e}")
+            
+            # Append total row
+            total_df_digitem = pd.DataFrame([total_row_digitem])
+            df_digitem = pd.concat([df_digitem, total_df_digitem], ignore_index=True)
+            print(f"✅ Fila de totales agregada a DIGITEM")
+        else:
+            print("ℹ️  No se encontraron filas DIGITEM para mover")
+    
     # Extract summary from PDF and calculate totals for validation
-    # IMPORTANT: Calculate totals BEFORE adding the "Total" row
+    # IMPORTANT: Calculate totals AFTER removing DIGITEM rows and BEFORE adding the "Total" row
     print("🔍 Extrayendo información de resumen del PDF para validación...")
     pdf_summary = extract_summary_from_pdf(pdf_path)
     extracted_totals = calculate_extracted_totals(df_mov, bank_config['name'])
@@ -2086,15 +2272,39 @@ def main():
     # Print validation summary to console
     print_validation_summary(pdf_summary, extracted_totals, df_validation)
     
-    # write three sheets: summary, movements, and validation
+    # Determine number of sheets to write
+    num_sheets = 3  # Summary, Movements, Data Validation
+    if df_transferencias is not None and not df_transferencias.empty:
+        num_sheets += 1  # Add Transferencias sheet
+    if df_digitem is not None and not df_digitem.empty:
+        num_sheets += 1  # Add DIGITEM sheet
+    
+    # write sheets: summary, movements, validation, and optionally Transferencias and DIGITEM
     try:
-        print(f"📝 Escribiendo Excel con 3 pestañas: Summary, Movements, Data Validation")
+        sheet_names = "Summary, Movements, Data Validation"
+        if df_transferencias is not None and not df_transferencias.empty:
+            sheet_names += ", Transferencias"
+        if df_digitem is not None and not df_digitem.empty:
+            sheet_names += ", DIGITEM"
+        print(f"📝 Escribiendo Excel con {num_sheets} pestañas: {sheet_names}")
         with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
             print("   - Escribiendo pestaña 'Summary'...")
             df_summary.to_excel(writer, sheet_name='Summary', index=False)
             
             print("   - Escribiendo pestaña 'Movements'...")
             df_mov.to_excel(writer, sheet_name='Movements', index=False)
+            
+            # Write Transferencias sheet if available
+            if df_transferencias is not None and not df_transferencias.empty:
+                print("   - Escribiendo pestaña 'Transferencias'...")
+                df_transferencias.to_excel(writer, sheet_name='Transferencias', index=False)
+                print(f"   ✅ Pestaña 'Transferencias' creada exitosamente con {len(df_transferencias)} filas")
+            
+            # Write DIGITEM sheet if available
+            if df_digitem is not None and not df_digitem.empty:
+                print("   - Escribiendo pestaña 'DIGITEM'...")
+                df_digitem.to_excel(writer, sheet_name='DIGITEM', index=False)
+                print(f"   ✅ Pestaña 'DIGITEM' creada exitosamente con {len(df_digitem)} filas")
             
             # Ensure validation DataFrame exists and is not empty
             print("   - Escribiendo pestaña 'Data Validation'...")
