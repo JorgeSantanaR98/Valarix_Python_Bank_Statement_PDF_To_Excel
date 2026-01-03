@@ -203,14 +203,14 @@ def find_column_coordinates(pdf_path: str, page_number: int = 1):
     try:
         with pdfplumber.open(pdf_path) as pdf:
             if page_number > len(pdf.pages):
-                print(f"❌ El PDF solo tiene {len(pdf.pages)} páginas")
+                # print(f"❌ El PDF solo tiene {len(pdf.pages)} páginas")
                 return
             
             page = pdf.pages[page_number - 1]
             words = page.extract_words(x_tolerance=3, y_tolerance=3)
             
             if not words:
-                print("❌ No se encontraron palabras en la página")
+                # print("❌ No se encontraron palabras en la página")
                 return
             
             # Group by approximate Y coordinate (rows)
@@ -221,21 +221,21 @@ def find_column_coordinates(pdf_path: str, page_number: int = 1):
                     rows[top] = []
                 rows[top].append(word)
             
-            print(f"\n📄 Página {page_number} del PDF: {pdf_path}")
-            print("=" * 120)
-            print(f"{'Y (top)':<8} {'X0':<8} {'X1':<8} {'X_center':<10} {'Texto':<40}")
-            print("-" * 120)
+            # print(f"\n📄 Página {page_number} del PDF: {pdf_path}")
+            # print("=" * 120)
+            # print(f"{'Y (top)':<8} {'X0':<8} {'X1':<8} {'X_center':<10} {'Texto':<40}")
+            # print("-" * 120)
             
             # Print words sorted by Y then X
             for top in sorted(rows.keys()):
                 row_words = sorted(rows[top], key=lambda w: w['x0'])
                 for i, word in enumerate(row_words):
                     x_center = (word['x0'] + word['x1']) / 2
-                    print(f"{top:<8} {word['x0']:<8.1f} {word['x1']:<8.1f} {x_center:<10.1f} {word['text']:<40}")
+                    # print(f"{top:<8} {word['x0']:<8.1f} {word['x1']:<8.1f} {x_center:<10.1f} {word['text']:<40}")
             
-            print("\n" + "=" * 120)
-            print("\nRangos aproximados de columnas (X0 a X1):")
-            print("-" * 120)
+            # print("\n" + "=" * 120)
+            # print("\nRangos aproximados de columnas (X0 a X1):")
+            # print("-" * 120)
             
             # Find column boundaries
             all_x0 = [w['x0'] for word_list in rows.values() for w in word_list]
@@ -244,26 +244,27 @@ def find_column_coordinates(pdf_path: str, page_number: int = 1):
             min_x = min(all_x0)
             max_x = max(all_x1)
             
-            print(f"Rango X total: {min_x:.1f} a {max_x:.1f}")
-            print("\nAnaliza la salida anterior y proporciona estos valores en BANK_CONFIGS:")
-            print("""
-Ejemplo:
-BANK_CONFIGS = {
-    "BBVA": {
-        "name": "BBVA",
-        "columns": {
-            "fecha": (x_min, x_max),           # Columna Fecha de Operación
-            "liq": (x_min, x_max),              # Columna LIQ (Liquidación)
-            "descripcion": (x_min, x_max),     # Columna Descripción
-            "cargos": (x_min, x_max),          # Columna Cargos
-            "abonos": (x_min, x_max),          # Columna Abonos
-            "saldo": (x_min, x_max),           # Columna Saldo
-        }
-    },
-}
-            """)
+            # print(f"Rango X total: {min_x:.1f} a {max_x:.1f}")
+            # print("\nAnaliza la salida anterior y proporciona estos valores en BANK_CONFIGS:")
+            # print("""
+            # Ejemplo:
+            # BANK_CONFIGS = {
+            #     "BBVA": {
+            #         "name": "BBVA",
+            #         "columns": {
+            #             "fecha": (x_min, x_max),           # Columna Fecha de Operación
+            #             "liq": (x_min, x_max),              # Columna LIQ (Liquidación)
+            #             "descripcion": (x_min, x_max),     # Columna Descripción
+            #             "cargos": (x_min, x_max),          # Columna Cargos
+            #             "abonos": (x_min, x_max),          # Columna Abonos
+            #             "saldo": (x_min, x_max),           # Columna Saldo
+            #         }
+            #     },
+            # }
+            # """)
     
     except Exception as e:
+        pass
         print(f"❌ Error: {e}")
 
 
@@ -295,7 +296,7 @@ def detect_bank_from_pdf(pdf_path: str) -> str:
                     for bank_name, keywords in BANK_KEYWORDS.items():
                         for keyword_pattern in keywords:
                             if re.search(keyword_pattern, line_clean, re.I):
-                                print(f"🏦 Banco detectado: {bank_name} (encontrado en línea: {line_clean[:50]}...)")
+                                print(f"🏦 Banco detectado: {bank_name}")
                                 return bank_name
                     
                     # Also check if line contains bank name directly (case insensitive)
@@ -303,14 +304,15 @@ def detect_bank_from_pdf(pdf_path: str) -> str:
                     for bank_name in BANK_KEYWORDS.keys():
                         # Check for exact bank name match (as whole word)
                         if re.search(rf'\b{re.escape(bank_name.upper())}\b', line_upper):
-                            print(f"🏦 Banco detectado: {bank_name} (encontrado en línea: {line_clean[:50]}...)")
+                            print(f"🏦 Banco detectado: {bank_name}")
                             return bank_name
     
     except Exception as e:
-        print(f"⚠️  Error al detectar banco: {e}")
+        pass
+        # print(f"⚠️  Error al detectar banco: {e}")
     
     # If no bank detected, return default
-    print(f"⚠️  No se pudo detectar el banco, usando: {DEFAULT_BANK}")
+    #print(f"⚠️  No se pudo detectar el banco, usando: {DEFAULT_BANK}")
     return DEFAULT_BANK
 
 
@@ -333,7 +335,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
     try:
         # First, detect the bank
         bank_name = detect_bank_from_pdf(pdf_path)
-        print(f"🏦 Extrayendo resumen para banco: {bank_name}")
+        # print(f"🏦 Extrayendo resumen para banco: {bank_name}")
         
         with pdfplumber.open(pdf_path) as pdf:
             # Check first few pages and last page for summary information
@@ -361,7 +363,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                 # BBVA: "Depósitos / Abonos (+) 1 25,000.00" - el último número es el total
                 # "Retiros / Cargos (-) 25 53,877.37"
                 # "Saldo Final (+) 166,301.83"
-                print(f"🔍 Buscando patrones BBVA en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones BBVA en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     # Try multiple patterns for BBVA depósitos
                     if not summary_data['total_abonos']:
@@ -375,7 +377,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                             if match:
                                 amount = normalize_amount_str(match.group(1))
                                 if amount > 0:
-                                    print(f"✅ BBVA: Encontrado depósitos/abonos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                    #print(f"✅ BBVA: Encontrado depósitos/abonos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                     summary_data['total_abonos'] = amount
                                     summary_data['total_depositos'] = amount
                                     break
@@ -392,7 +394,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                             if match:
                                 amount = normalize_amount_str(match.group(1))
                                 if amount > 0:
-                                    print(f"✅ BBVA: Encontrado retiros/cargos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                    #print(f"✅ BBVA: Encontrado retiros/cargos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                     summary_data['total_cargos'] = amount
                                     summary_data['total_retiros'] = amount
                                     break
@@ -408,7 +410,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                             if match:
                                 amount = normalize_amount_str(match.group(1))
                                 if amount > 0:
-                                    print(f"✅ BBVA: Encontrado saldo final: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                    #print(f"✅ BBVA: Encontrado saldo final: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                     summary_data['saldo_final'] = amount
                                     break
             
@@ -417,14 +419,14 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                 # "CARGOS 58,927.68"
                 # "SALDO ACTUAL 546,409.22"
                 # "SALDO ANTERIOR 595,961.41"
-                print(f"🔍 Buscando patrones Inbursa en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones Inbursa en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     if not summary_data['total_abonos']:
                         match = re.search(r'ABONOS\s+([\d,\.]+)', line, re.I)
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Inbursa: Encontrado abonos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Inbursa: Encontrado abonos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_abonos'] = amount
                                 summary_data['total_depositos'] = amount
                     
@@ -433,7 +435,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Inbursa: Encontrado cargos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Inbursa: Encontrado cargos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_cargos'] = amount
                                 summary_data['total_retiros'] = amount
                     
@@ -442,7 +444,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Inbursa: Encontrado saldo actual: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Inbursa: Encontrado saldo actual: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_final'] = amount
                     
                     if not summary_data['saldo_anterior']:
@@ -450,21 +452,21 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Inbursa: Encontrado saldo anterior: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Inbursa: Encontrado saldo anterior: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_anterior'] = amount
             
             elif bank_name == "Santander":
                 # Santander: "TOTAL 821,646.20 820,238.73 1,417.18" - primer valor es depósitos, segundo retiros, tercero saldo
                 # This appears at the end of movements table
-                print(f"🔍 Buscando patrones Santander en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones Santander en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     match = re.search(r'TOTAL\s+([\d,\.]+)\s+([\d,\.]+)\s+([\d,\.]+)', line, re.I)
                     if match:
                         depositos = normalize_amount_str(match.group(1))
                         retiros = normalize_amount_str(match.group(2))
                         saldo = normalize_amount_str(match.group(3))
-                        print(f"✅ Santander: Encontrado TOTAL en línea {i+1}: {line[:100]}")
-                        print(f"   Depósitos: ${depositos:,.2f}, Retiros: ${retiros:,.2f}, Saldo: ${saldo:,.2f}")
+                        #print(f"✅ Santander: Encontrado TOTAL en línea {i+1}: {line[:100]}")
+                        #print(f"   Depósitos: ${depositos:,.2f}, Retiros: ${retiros:,.2f}, Saldo: ${saldo:,.2f}")
                         if depositos > 0:
                             summary_data['total_depositos'] = depositos
                             summary_data['total_abonos'] = depositos
@@ -481,7 +483,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                 # "+ Total de depósitos $ 38,396.00"
                 # "- Total de retiros $ 36,805.40"
                 # "Saldo actual $ 3,347.18"
-                print(f"🔍 Buscando patrones Banorte en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones Banorte en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     # Saldo inicial
                     if not summary_data['saldo_anterior']:
@@ -489,7 +491,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Banorte: Encontrado saldo inicial: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Banorte: Encontrado saldo inicial: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_anterior'] = amount
                     
                     # Depósitos
@@ -498,7 +500,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Banorte: Encontrado depósitos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Banorte: Encontrado depósitos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_depositos'] = amount
                                 summary_data['total_abonos'] = amount
                     
@@ -508,7 +510,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Banorte: Encontrado retiros: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Banorte: Encontrado retiros: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_retiros'] = amount
                                 summary_data['total_cargos'] = amount
                     
@@ -518,7 +520,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Banorte: Encontrado saldo actual: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Banorte: Encontrado saldo actual: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_final'] = amount
             
             elif bank_name == "Banamex":
@@ -527,7 +529,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                 # "( + ) 8 Depósitos $344,527.26"
                 # "( - ) 16 Retiros $254,072.38"
                 # "SALDO AL 31 DE ENERO DE 2020 $95,752.52"
-                print(f"🔍 Buscando patrones Banamex en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones Banamex en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     # Saldo Anterior
                     if not summary_data['saldo_anterior']:
@@ -535,7 +537,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Banamex: Encontrado saldo anterior: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Banamex: Encontrado saldo anterior: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_anterior'] = amount
                     
                     # Depósitos
@@ -544,7 +546,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Banamex: Encontrado depósitos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Banamex: Encontrado depósitos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_depositos'] = amount
                                 summary_data['total_abonos'] = amount
                     
@@ -554,7 +556,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Banamex: Encontrado retiros: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Banamex: Encontrado retiros: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_retiros'] = amount
                                 summary_data['total_cargos'] = amount
                     
@@ -564,7 +566,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Banamex: Encontrado saldo final: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Banamex: Encontrado saldo final: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_final'] = amount
                         # Also try simpler pattern
                         if not summary_data['saldo_final']:
@@ -572,20 +574,20 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                             if match:
                                 amount = normalize_amount_str(match.group(1))
                                 if amount > 0:
-                                    print(f"✅ Banamex: Encontrado saldo final (patrón simple): ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                    #print(f"✅ Banamex: Encontrado saldo final (patrón simple): ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                     summary_data['saldo_final'] = amount
             
             elif bank_name == "Banbajío":
                 # BanBajío: tabla con "SALDO ANTERIOR (+) DEPOSITOS (-) CARGOS SALDO ACTUAL" y valores en la siguiente línea
                 # Pattern: "$ 5,280.55 $ 1,441,951.06 $ 1,350,565.02 $ 96,666.59"
-                print(f"🔍 Buscando patrones BanBajío en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones BanBajío en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     if re.search(r'SALDO\s+ANTERIOR.*DEPOSITOS.*CARGOS.*SALDO\s+ACTUAL', line, re.I):
-                        print(f"✅ BanBajío: Encontrada tabla en línea {i+1}: {line[:100]}")
+                        #print(f"✅ BanBajío: Encontrada tabla en línea {i+1}: {line[:100]}")
                         # Next line should have the values
                         if i + 1 < len(all_lines):
                             values_line = all_lines[i + 1]
-                            print(f"   Línea de valores: {values_line[:100]}")
+                            #print(f"   Línea de valores: {values_line[:100]}")
                             # Extract all amounts from the line
                             amounts = re.findall(r'\$\s*([\d,\.]+)', values_line)
                             if len(amounts) >= 4:
@@ -595,9 +597,10 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                                 summary_data['total_cargos'] = normalize_amount_str(amounts[2])
                                 summary_data['total_retiros'] = normalize_amount_str(amounts[2])
                                 summary_data['saldo_final'] = normalize_amount_str(amounts[3])
-                                print(f"   Extraídos: Saldo anterior=${summary_data['saldo_anterior']:,.2f}, Depósitos=${summary_data['total_depositos']:,.2f}, Cargos=${summary_data['total_cargos']:,.2f}, Saldo final=${summary_data['saldo_final']:,.2f}")
+                                #print(f"   Extraídos: Saldo anterior=${summary_data['saldo_anterior']:,.2f}, Depósitos=${summary_data['total_depositos']:,.2f}, Cargos=${summary_data['total_cargos']:,.2f}, Saldo final=${summary_data['saldo_final']:,.2f}")
                             else:
-                                print(f"   ⚠️  Solo se encontraron {len(amounts)} valores, se esperaban 4")
+                                pass
+                                # print(f"   ⚠️  Solo se encontraron {len(amounts)} valores, se esperaban 4")
                             break
             
             elif bank_name == "Banregio":
@@ -608,7 +611,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                 # "- Comisiones Efectivamente Cobradas $320.00"
                 # "- Otros Cargos $38,678.00"
                 # "= Saldo Final $4,580.78"
-                print(f"🔍 Buscando patrones BanRegio en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones BanRegio en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     # Saldo Inicial
                     if not summary_data['saldo_anterior']:
@@ -616,7 +619,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ BanRegio: Encontrado saldo inicial: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ BanRegio: Encontrado saldo inicial: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_anterior'] = amount
                     
                     # Abonos
@@ -625,7 +628,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ BanRegio: Encontrado abonos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ BanRegio: Encontrado abonos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_abonos'] = amount
                                 summary_data['total_depositos'] = amount
                     
@@ -638,7 +641,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                             if match:
                                 amount = normalize_amount_str(match.group(1))
                                 if amount > 0:
-                                    print(f"✅ BanRegio: Encontrado retiros: ${amount:,.2f} en línea {i+2}: {next_line[:80]}")
+                                    #print(f"✅ BanRegio: Encontrado retiros: ${amount:,.2f} en línea {i+2}: {next_line[:80]}")
                                     summary_data['total_retiros'] = amount
                                     summary_data['total_cargos'] = amount
                     
@@ -651,7 +654,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                             if match:
                                 amount = normalize_amount_str(match.group(1))
                                 if amount > 0:
-                                    print(f"✅ BanRegio: Encontrado saldo final: ${amount:,.2f} en línea {i+2}: {next_line[:80]}")
+                                    #print(f"✅ BanRegio: Encontrado saldo final: ${amount:,.2f} en línea {i+2}: {next_line[:80]}")
                                     summary_data['saldo_final'] = amount
             
             elif bank_name == "Clara":
@@ -660,7 +663,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                 # "- Pagos -3,305.40"
                 # "+ Compras y cargos del periodo 3,115.30"
                 # "Saldo al corte 3,115.30"
-                print(f"🔍 Buscando patrones Clara en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones Clara en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     # Saldo anterior
                     if not summary_data['saldo_anterior']:
@@ -668,7 +671,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Clara: Encontrado saldo anterior: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Clara: Encontrado saldo anterior: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_anterior'] = amount
                     
                     # Compras y cargos (esto son los cargos)
@@ -677,7 +680,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Clara: Encontrado cargos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Clara: Encontrado cargos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_cargos'] = amount
                                 summary_data['total_retiros'] = amount
                     
@@ -687,7 +690,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Clara: Encontrado saldo al corte: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Clara: Encontrado saldo al corte: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_final'] = amount
             
             elif bank_name == "Konfio":
@@ -696,7 +699,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                 # "Pagos - $ 97,000.00"
                 # "Compras y cargos $ 56,176.79"
                 # "Saldo total al corte $ 312,227.05"
-                print(f"🔍 Buscando patrones Konfio en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones Konfio en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     # Saldo anterior
                     if not summary_data['saldo_anterior']:
@@ -704,7 +707,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Konfio: Encontrado saldo anterior: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Konfio: Encontrado saldo anterior: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_anterior'] = amount
                     
                     # Compras y cargos
@@ -713,7 +716,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Konfio: Encontrado cargos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Konfio: Encontrado cargos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_cargos'] = amount
                                 summary_data['total_retiros'] = amount
                     
@@ -723,7 +726,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Konfio: Encontrado saldo total al corte: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Konfio: Encontrado saldo total al corte: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_final'] = amount
             
             elif bank_name == "Scotiabank":
@@ -732,7 +735,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                 # "(+) Depósitos $35,461,511.04"
                 # "(-) Retiros $33,018,203.16"
                 # "(=) Saldo final de la cuenta $3,473,941.21"
-                print(f"🔍 Buscando patrones Scotiabank en {len(all_lines)} líneas...")
+                #print(f"🔍 Buscando patrones Scotiabank en {len(all_lines)} líneas...")
                 for i, line in enumerate(all_lines):
                     # Saldo inicial
                     if not summary_data['saldo_anterior']:
@@ -740,7 +743,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Scotiabank: Encontrado saldo inicial: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Scotiabank: Encontrado saldo inicial: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_anterior'] = amount
                     
                     # Depósitos
@@ -749,7 +752,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Scotiabank: Encontrado depósitos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Scotiabank: Encontrado depósitos: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_depositos'] = amount
                                 summary_data['total_abonos'] = amount
                     
@@ -762,7 +765,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Scotiabank: Encontrado retiros: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Scotiabank: Encontrado retiros: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['total_retiros'] = amount
                                 summary_data['total_cargos'] = amount
                     
@@ -772,7 +775,7 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                         if match:
                             amount = normalize_amount_str(match.group(1))
                             if amount > 0:
-                                print(f"✅ Scotiabank: Encontrado saldo final: ${amount:,.2f} en línea {i+1}: {line[:80]}")
+                                #print(f"✅ Scotiabank: Encontrado saldo final: ${amount:,.2f} en línea {i+1}: {line[:80]}")
                                 summary_data['saldo_final'] = amount
             
             else:
@@ -886,16 +889,18 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                                     break
     
     except Exception as e:
-        print(f"⚠️  Error al extraer resumen del PDF: {e}")
+        #print(f"⚠️  Error al extraer resumen del PDF: {e}")
         import traceback
         traceback.print_exc()
     
     # Print what was found
     found_items = [k for k, v in summary_data.items() if v is not None]
     if found_items:
-        print(f"✅ Valores encontrados en PDF: {', '.join(found_items)}")
+        pass
+        # print(f"✅ Valores encontrados en PDF: {', '.join(found_items)}")
     else:
-        print("⚠️  No se encontraron valores de resumen en el PDF")
+        pass
+        # print("⚠️  No se encontraron valores de resumen en el PDF")
     
     return summary_data
 
@@ -933,7 +938,7 @@ def calculate_extracted_totals(df_mov: pd.DataFrame, bank_name: str) -> dict:
             val = saldo_col.iloc[idx]
             if val and pd.notna(val) and str(val).strip() and str(val).strip() != '':
                 totals['saldo_final'] = normalize_amount_str(val)
-                print(f"✅ Saldo final extraído de Movements: ${totals['saldo_final']:,.2f} (fila {idx+1} de {len(saldo_col)})")
+                #print(f"✅ Saldo final extraído de Movements: ${totals['saldo_final']:,.2f} (fila {idx+1} de {len(saldo_col)})")
                 break
     
     return totals
@@ -1013,9 +1018,9 @@ def print_validation_summary(pdf_summary: dict, extracted_totals: dict, validati
     """
     Print validation summary to console with checkmarks or X marks.
     """
-    print("\n" + "=" * 80)
-    print("📊 VALIDACIÓN DE DATOS")
-    print("=" * 80)
+    # print("\n" + "=" * 80)
+    # print("📊 VALIDACIÓN DE DATOS")
+    # print("=" * 80)
     
     # Check overall status
     overall_status = validation_df[validation_df['Concepto'] == 'VALIDACIÓN GENERAL']['Estado'].values[0]
@@ -1024,22 +1029,29 @@ def print_validation_summary(pdf_summary: dict, extracted_totals: dict, validati
         print("✅ VALIDACIÓN: TODO CORRECTO")
     else:
         print("❌ VALIDACIÓN: HAY DISCREPANCIAS")
+        pass
     
-    print("\nComparación de Totales:")
-    print("-" * 80)
-    
+    # Print VALIDACIÓN GENERAL
     for _, row in validation_df.iterrows():
         if row['Concepto'] == 'VALIDACIÓN GENERAL':
-            print(f"\n{row['Concepto']}: {row['Estado']}")
-        else:
-            status_icon = "✅" if row['Estado'] == '✓' else "❌"
-            print(f"{status_icon} {row['Concepto']}")
-            print(f"   PDF: {row['Valor en PDF']}")
-            print(f"   Extraído: {row['Valor Extraído']}")
-            if row['Diferencia'] != "N/A":
-                print(f"   Diferencia: {row['Diferencia']}")
+            print(f"VALIDACIÓN GENERAL")
+            break
     
-    print("=" * 80 + "\n")
+    # print("\nComparación de Totales:")
+    # print("-" * 80)
+    
+    # for _, row in validation_df.iterrows():
+    #     if row['Concepto'] == 'VALIDACIÓN GENERAL':
+    #         print(f"\n{row['Concepto']}: {row['Estado']}")
+    #     else:
+    #         status_icon = "✅" if row['Estado'] == '✓' else "❌"
+    #         print(f"{status_icon} {row['Concepto']}")
+    #         print(f"   PDF: {row['Valor en PDF']}")
+    #         print(f"   Extraído: {row['Valor Extraído']}")
+    #         if row['Diferencia'] != "N/A":
+    #             print(f"   Diferencia: {row['Diferencia']}")
+    
+    # print("=" * 80 + "\n")
 
 
 def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame:
@@ -1079,7 +1091,7 @@ def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame
                 # Check both text and words for "DIGITEM"
                 if re.search(r'\bDIGITEM\b', text, re.I):
                     in_digitem_section = True
-                    print(f"📄 Sección DIGITEM encontrada en página {page_num}")
+                    #print(f"📄 Sección DIGITEM encontrada en página {page_num}")
                     # Skip the header line "DETALLE DE OPERACIONES" that comes after DIGITEM
                     skip_next_line = True
                 else:
@@ -1087,7 +1099,7 @@ def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame
                     all_words_text = ' '.join([w.get('text', '') for w in words])
                     if re.search(r'\bDIGITEM\b', all_words_text, re.I):
                         in_digitem_section = True
-                        print(f"📄 Sección DIGITEM encontrada en página {page_num} (desde words)")
+                        # print(f"📄 Sección DIGITEM encontrada en página {page_num} (desde words)")
                         skip_next_line = True
                     else:
                         continue
@@ -1106,14 +1118,14 @@ def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame
                     # Check if we're leaving DIGITEM section (check each row)
                     all_row_text = ' '.join([w.get('text', '') for w in row_words])
                     if re.search(r'TRANSFERENCIA\s+ELECTRONICA\s+DE\s+FONDOS', all_row_text, re.I):
-                        print(f"📄 Fin de sección DIGITEM encontrado en página {page_num}")
+                        # print(f"📄 Fin de sección DIGITEM encontrado en página {page_num}")
                         extraction_stopped = True
                         break
                     
                     # Skip header line "DETALLE DE OPERACIONES" that comes right after DIGITEM
                     if skip_next_line:
                         if re.search(r'DETALLE\s+DE\s+OPERACIONES', all_row_text, re.I):
-                            print(f"   ⏭️  Saltando línea de encabezado: DETALLE DE OPERACIONES")
+                            # print(f"   ⏭️  Saltando línea de encabezado: DETALLE DE OPERACIONES")
                             skip_next_line = False
                             continue
                         else:
@@ -1134,14 +1146,14 @@ def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame
                     has_emp = 'EMP' in desc_val.upper()
                     
                     # Debug: print row info for rows that might be DIGITEM
-                    if has_date or has_emp or any(row_data.get(k) for k in ['cargos', 'abonos', 'saldo'] if row_data.get(k)):
-                        print(f"   🔍 Fila potencial DIGITEM - Fecha: {fecha_val[:20] if fecha_val else 'N/A'}, has_date: {has_date}, has_EMP: {has_emp}, Desc: {desc_val[:50] if desc_val else 'N/A'}")
+                    # if has_date or has_emp or any(row_data.get(k) for k in ['cargos', 'abonos', 'saldo'] if row_data.get(k)):
+                    #     print(f"   🔍 Fila potencial DIGITEM - Fecha: {fecha_val[:20] if fecha_val else 'N/A'}, has_date: {has_date}, has_EMP: {has_emp}, Desc: {desc_val[:50] if desc_val else 'N/A'}")
                     
                     if has_date and has_emp:
                         # This is a valid DIGITEM row (has date and EMP in description)
                         row_data['page'] = page_num
                         digitem_rows.append(row_data)
-                        print(f"   ✅ Fila DIGITEM agregada (total: {len(digitem_rows)})")
+                        # print(f"   ✅ Fila DIGITEM agregada (total: {len(digitem_rows)})")
                     else:
                         # Continuation row: append to previous DIGITEM row if exists and has EMP
                         if digitem_rows:
@@ -1208,11 +1220,11 @@ def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame
                                         prev['descripcion'] = cont_text
         
         # Debug: print summary
-        print(f"🔍 Total de filas DIGITEM encontradas: {len(digitem_rows)}")
-        if digitem_rows:
-            print(f"   📋 Primeras 3 filas:")
-            for i, r in enumerate(digitem_rows[:3]):
-                print(f"      Fila {i+1}: fecha={r.get('fecha', 'N/A')[:20]}, desc={str(r.get('descripcion', 'N/A'))[:50]}")
+        # print(f"🔍 Total de filas DIGITEM encontradas: {len(digitem_rows)}")
+        # if digitem_rows:
+        #     print(f"   📋 Primeras 3 filas:")
+        #     for i, r in enumerate(digitem_rows[:3]):
+        #         print(f"      Fila {i+1}: fecha={r.get('fecha', 'N/A')[:20]}, desc={str(r.get('descripcion', 'N/A'))[:50]}")
         
         # Process digitem_rows similar to how movements are processed
         if digitem_rows:
@@ -1298,16 +1310,18 @@ def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame
             # Keep only needed columns
             df_digitem = df_digitem[['Fecha', 'Descripción', 'Importe']]
             
-            print(f"✅ Se extrajeron {len(df_digitem)} registros de DIGITEM del PDF")
+            #print(f"✅ Se extrajeron {len(df_digitem)} registros de DIGITEM del PDF")
             return df_digitem
         else:
-            print("ℹ️  No se encontró sección DIGITEM en el PDF")
+            pass
+            # print("ℹ️  No se encontró sección DIGITEM en el PDF")
             return pd.DataFrame(columns=['Fecha', 'Descripción', 'Importe'])
     
     except Exception as e:
-        print(f"⚠️  Error al extraer DIGITEM del PDF: {e}")
-        import traceback
-        traceback.print_exc()
+        pass
+        # print(f"⚠️  Error al extraer DIGITEM del PDF: {e}")
+        # import traceback
+        # traceback.print_exc()
         return pd.DataFrame(columns=['Fecha', 'Descripción', 'Importe'])
 
 
@@ -1351,12 +1365,12 @@ def extract_transferencia_section(pdf_path: str) -> pd.DataFrame:
                     # Check if we're entering TRANSFERENCIA section
                     if re.search(r'TRANSFERENCIA\s+ELECTRONICA\s+DE\s+FONDOS', line_clean, re.I):
                         in_transferencia_section = True
-                        print(f"📄 Sección TRANSFERENCIA encontrada en página {page_num}")
+                        #print(f"📄 Sección TRANSFERENCIA encontrada en página {page_num}")
                         continue
                     
                     # Check if we're leaving TRANSFERENCIA section
                     if in_transferencia_section and re.search(r'^TOTALES:', line_clean, re.I):
-                        print(f"📄 Fin de sección TRANSFERENCIA encontrado en página {page_num}")
+                        #print(f"📄 Fin de sección TRANSFERENCIA encontrado en página {page_num}")
                         break
                     
                     # Extract rows from TRANSFERENCIA section
@@ -1416,14 +1430,15 @@ def extract_transferencia_section(pdf_path: str) -> pd.DataFrame:
         
         if transferencia_rows:
             df_transferencia = pd.DataFrame(transferencia_rows)
-            print(f"✅ Se extrajeron {len(df_transferencia)} registros de TRANSFERENCIA del PDF")
+            #print(f"✅ Se extrajeron {len(df_transferencia)} registros de TRANSFERENCIA del PDF")
             return df_transferencia
         else:
-            print("ℹ️  No se encontró sección TRANSFERENCIA en el PDF")
+            pass
+            # print("ℹ️  No se encontró sección TRANSFERENCIA en el PDF")
             return pd.DataFrame(columns=['Fecha', 'Descripción', 'Importe', 'Comisiones', 'I.V.A', 'Total'])
     
     except Exception as e:
-        print(f"⚠️  Error al extraer TRANSFERENCIA del PDF: {e}")
+        #print(f"⚠️  Error al extraer TRANSFERENCIA del PDF: {e}")
         import traceback
         traceback.print_exc()
         return pd.DataFrame(columns=['Fecha', 'Descripción', 'Importe', 'Comisiones', 'I.V.A', 'Total'])
@@ -1459,7 +1474,7 @@ def export_to_excel(data: list, output_path: str):
     """
     df = pd.DataFrame(data)
     df.to_excel(output_path, index=False)
-    print(f"✅ Excel file created: {output_path}")
+    print(f"✅ Excel file created -> {output_path}")
 
 
 def split_pages_into_lines(pages: list) -> list:
@@ -1603,12 +1618,12 @@ def extract_movement_row(words, columns):
 def main():
     # Validate input
     if len(sys.argv) < 2:
-        print("Usage:")
-        print("  python main2.py <input.pdf>              # Parse PDF and create Excel")
-        print("  python main2.py <input.pdf> --find <page> # Find column coordinates on page N")
-        print("\nExample:")
-        print("  python main2.py BBVA.pdf")
-        print("  python main2.py BBVA.pdf --find 2")
+        #print("Usage:")
+        #print("  python main2.py <input.pdf>              # Parse PDF and create Excel")
+        #print("  python main2.py <input.pdf> --find <page> # Find column coordinates on page N")
+        #print("\nExample:")
+        #print("  python main2.py BBVA.pdf")
+        #print("  python main2.py BBVA.pdf --find 2")
         sys.exit(1)
 
     pdf_path = sys.argv[1]
@@ -1616,21 +1631,21 @@ def main():
     # Check for --find mode
     if len(sys.argv) >= 3 and sys.argv[2] == '--find':
         page_num = int(sys.argv[3]) if len(sys.argv) > 3 else 1
-        print(f"🔍 Buscando coordenadas en página {page_num}...")
+        #print(f"🔍 Buscando coordenadas en página {page_num}...")
         find_column_coordinates(pdf_path, page_num)
         return
 
     if not os.path.isfile(pdf_path):
-        print("❌ File not found.")
+        #print("❌ File not found.")
         sys.exit(1)
 
     if not pdf_path.lower().endswith(".pdf"):
-        print("❌ Only PDF files are supported.")
+        #print("❌ Only PDF files are supported.")
         sys.exit(1)
 
     output_excel = os.path.splitext(pdf_path)[0] + ".xlsx"
 
-    print("📄 Reading PDF...")
+    print("Reading PDF...")
     
     # Detect bank from PDF content (read PDF directly for detection)
     detected_bank = detect_bank_from_pdf(pdf_path)
@@ -1643,7 +1658,7 @@ def main():
     # Get bank config based on detected bank
     bank_config = BANK_CONFIGS.get(detected_bank)
     if not bank_config:
-        print(f"⚠️  Bank config not found for {detected_bank}, using generic fallback")
+        #print(f"⚠️  Bank config not found for {detected_bank}, using generic fallback")
         # Create a generic config for non-BBVA banks
         # They will use raw text extraction instead of coordinate-based
         bank_config = {
@@ -1726,7 +1741,7 @@ def main():
             if movement_end_pattern:
                 all_text = ' '.join([w.get('text', '') for w in row_words])
                 if movement_end_pattern.search(all_text):
-                    print(f"🛑 Fin de tabla de movimientos detectado en página {page_num}: 'SALDO MINIMO REQUERIDO'")
+                    #print(f"🛑 Fin de tabla de movimientos detectado en página {page_num}: 'SALDO MINIMO REQUERIDO'")
                     extraction_stopped = True
                     break
 
@@ -2156,7 +2171,8 @@ def main():
                 abonos_val = r.get('abonos', '')
                 saldo_val = r.get('saldo', '')
                 if cargos_val or abonos_val or saldo_val:
-                    print(f"DEBUG BBVA Row: cargos='{cargos_val}', abonos='{abonos_val}', saldo='{saldo_val}'")
+                    pass
+                    # print(f"DEBUG BBVA Row: cargos='{cargos_val}', abonos='{abonos_val}', saldo='{saldo_val}'")
         
         # If columns_config was empty, we may have rows but without cargos/abonos/saldo
         # Try to extract them from raw text or _amounts
@@ -2455,7 +2471,7 @@ def main():
     # Filter summary/info rows from Movements for Banamex
     # These should not appear in Movements: "Saldo mínimo requerido", "COMISIONES COBRADAS"
     if bank_config['name'] == 'Banamex':
-        print("🔍 Filtrando filas de información (Saldo mínimo requerido, COMISIONES COBRADAS) de Movements...")
+        #print("🔍 Filtrando filas de información (Saldo mínimo requerido, COMISIONES COBRADAS) de Movements...")
         info_rows_to_remove = []
         
         # Check each row in df_mov for summary/info rows
@@ -2473,23 +2489,23 @@ def main():
                 # Check if this is an info row that should be filtered
                 if 'SALDO MINIMO REQUERIDO' in desc_text or 'SALDO MÍNIMO REQUERIDO' in desc_text:
                     info_rows_to_remove.append(idx)
-                    print(f"   ✅ Fila filtrada (Saldo mínimo requerido): {str(row.get(desc_col, ''))[:60]}...")
+                    #print(f"   ✅ Fila filtrada (Saldo mínimo requerido): {str(row.get(desc_col, ''))[:60]}...")
                 elif 'COMISIONES COBRADAS' in desc_text:
                     info_rows_to_remove.append(idx)
-                    print(f"   ✅ Fila filtrada (Comisiones cobradas): {str(row.get(desc_col, ''))[:60]}...")
+                    #print(f"   ✅ Fila filtrada (Comisiones cobradas): {str(row.get(desc_col, ''))[:60]}...")
         
         # Remove info rows from Movements
         if info_rows_to_remove:
-            print(f"   📝 Removiendo {len(info_rows_to_remove)} filas de información de Movements...")
+            #print(f"   📝 Removiendo {len(info_rows_to_remove)} filas de información de Movements...")
             df_mov = df_mov.drop(index=info_rows_to_remove).reset_index(drop=True)
-            print(f"   ✅ Filas removidas de Movements")
+            #print(f"   ✅ Filas removidas de Movements")
     
     # Extract DIGITEM and Transferencias sections directly from PDF for Banamex
     # This must be done BEFORE calculating totals for validation
     df_transferencias = None
     df_digitem = None
     if bank_config['name'] == 'Banamex':
-        print("🔍 Extrayendo secciones DIGITEM y TRANSFERENCIA directamente del PDF...")
+        # print("🔍 Extrayendo secciones DIGITEM y TRANSFERENCIA directamente del PDF...")
         
         # Extract DIGITEM section from PDF using same coordinate-based extraction as Movements
         df_digitem = extract_digitem_section(pdf_path, columns_config)
@@ -2499,7 +2515,7 @@ def main():
         
         # Add total row for DIGITEM if there are rows
         if df_digitem is not None and not df_digitem.empty and len(df_digitem) > 0:
-            print("📊 Agregando fila de totales para DIGITEM...")
+            # print("📊 Agregando fila de totales para DIGITEM...")
             total_row_digitem = {
                 'Fecha': 'Total',
                 'Descripción': '',
@@ -2513,16 +2529,17 @@ def main():
                 if total_importe > 0:
                     total_row_digitem['Importe'] = f"{total_importe:,.2f}"
             except Exception as e:
-                print(f"⚠️  Error al calcular total de Importe en DIGITEM: {e}")
+                pass
+                # print(f"⚠️  Error al calcular total de Importe en DIGITEM: {e}")
             
             # Append total row
             total_df_digitem = pd.DataFrame([total_row_digitem])
             df_digitem = pd.concat([df_digitem, total_df_digitem], ignore_index=True)
-            print(f"✅ Fila de totales agregada a DIGITEM")
+            # print(f"✅ Fila de totales agregada a DIGITEM")
         
         # Add total row for Transferencias if there are rows
         if df_transferencias is not None and not df_transferencias.empty and len(df_transferencias) > 0:
-            print("📊 Agregando fila de totales para Transferencias...")
+            #print("📊 Agregando fila de totales para Transferencias...")
             total_row_transferencia = {
                 'Fecha': 'Total',
                 'Descripción': '',
@@ -2558,22 +2575,23 @@ def main():
                     if total_total > 0:
                         total_row_transferencia['Total'] = f"{total_total:,.2f}"
             except Exception as e:
-                print(f"⚠️  Error al calcular totales en Transferencias: {e}")
+                pass
+                # print(f"⚠️  Error al calcular totales en Transferencias: {e}")
             
             # Append total row
             total_df_transferencia = pd.DataFrame([total_row_transferencia])
             df_transferencias = pd.concat([df_transferencias, total_df_transferencia], ignore_index=True)
-            print(f"✅ Fila de totales agregada a Transferencias")
+            #print(f"✅ Fila de totales agregada a Transferencias")
     
     # Extract summary from PDF and calculate totals for validation
     # IMPORTANT: Calculate totals AFTER removing DIGITEM rows and BEFORE adding the "Total" row
-    print("🔍 Extrayendo información de resumen del PDF para validación...")
+    #print("🔍 Extrayendo información de resumen del PDF para validación...")
     pdf_summary = extract_summary_from_pdf(pdf_path)
     extracted_totals = calculate_extracted_totals(df_mov, bank_config['name'])
     
     # Add a "Total" row at the end summing only "Abonos" and "Cargos" columns
     # This is done AFTER calculating totals for validation
-    print("📊 Agregando fila de totales...")
+    #print("📊 Agregando fila de totales...")
     total_row = {}
     
     # For each column, only calculate sum for "Abonos" and "Cargos"
@@ -2605,13 +2623,13 @@ def main():
     # Append the total row to the dataframe
     total_df = pd.DataFrame([total_row])
     df_mov = pd.concat([df_mov, total_df], ignore_index=True)
-    print(f"✅ Fila de totales agregada (solo Abonos y Cargos)")
+    #print(f"✅ Fila de totales agregada (solo Abonos y Cargos)")
     
     # Create validation sheet
-    print("📋 Creando pestaña de validación...")
+    #print("📋 Creando pestaña de validación...")
     df_validation = create_validation_sheet(pdf_summary, extracted_totals)
-    print(f"✅ DataFrame de validación creado con {len(df_validation)} filas")
-    print(f"   Columnas: {list(df_validation.columns)}")
+    #print(f"✅ DataFrame de validación creado con {len(df_validation)} filas")
+    #print(f"   Columnas: {list(df_validation.columns)}")
     
     # Print validation summary to console
     print_validation_summary(pdf_summary, extracted_totals, df_validation)
@@ -2630,42 +2648,45 @@ def main():
             sheet_names += ", Transferencias"
         if df_digitem is not None and not df_digitem.empty:
             sheet_names += ", DIGITEM"
-        print(f"📝 Escribiendo Excel con {num_sheets} pestañas: {sheet_names}")
+        #print(f"📝 Escribiendo Excel con {num_sheets} pestañas: {sheet_names}")
         with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
-            print("   - Escribiendo pestaña 'Summary'...")
+            #print("   - Escribiendo pestaña 'Summary'...")
             df_summary.to_excel(writer, sheet_name='Summary', index=False)
             
-            print("   - Escribiendo pestaña 'Movements'...")
+            #print("   - Escribiendo pestaña 'Movements'...")
             df_mov.to_excel(writer, sheet_name='Movements', index=False)
             
             # Write Transferencias sheet if available
             if df_transferencias is not None and not df_transferencias.empty:
-                print("   - Escribiendo pestaña 'Transferencias'...")
+                #print("   - Escribiendo pestaña 'Transferencias'...")
                 df_transferencias.to_excel(writer, sheet_name='Transferencias', index=False)
-                print(f"   ✅ Pestaña 'Transferencias' creada exitosamente con {len(df_transferencias)} filas")
+                #print(f"   ✅ Pestaña 'Transferencias' creada exitosamente con {len(df_transferencias)} filas")
             
             # Write DIGITEM sheet if available
             if df_digitem is not None and not df_digitem.empty:
-                print("   - Escribiendo pestaña 'DIGITEM'...")
+                # print("   - Escribiendo pestaña 'DIGITEM'...")
                 df_digitem.to_excel(writer, sheet_name='DIGITEM', index=False)
-                print(f"   ✅ Pestaña 'DIGITEM' creada exitosamente con {len(df_digitem)} filas")
+                # print(f"   ✅ Pestaña 'DIGITEM' creada exitosamente con {len(df_digitem)} filas")
             
             # Ensure validation DataFrame exists and is not empty
-            print("   - Escribiendo pestaña 'Data Validation'...")
+            #print("   - Escribiendo pestaña 'Data Validation'...")
             if df_validation is not None and not df_validation.empty:
                 try:
                     df_validation.to_excel(writer, sheet_name='Data Validation', index=False)
-                    print(f"   ✅ Pestaña 'Data Validation' creada exitosamente con {len(df_validation)} filas")
+                    #print(f"   ✅ Pestaña 'Data Validation' creada exitosamente con {len(df_validation)} filas")
                 except Exception as e:
-                    print(f"   ❌ Error al escribir pestaña 'Data Validation': {e}")
+                    pass
+                    # print(f"   ❌ Error al escribir pestaña 'Data Validation': {e}")
                     # Try with a simpler name
                     try:
                         df_validation.to_excel(writer, sheet_name='Validation', index=False)
-                        print(f"   ✅ Pestaña 'Validation' creada exitosamente (nombre alternativo)")
+                        pass
+                        # print(f"   ✅ Pestaña 'Validation' creada exitosamente (nombre alternativo)")
                     except Exception as e2:
-                        print(f"   ❌ Error también con nombre alternativo: {e2}")
+                        pass
+                        # print(f"   ❌ Error también con nombre alternativo: {e2}")
             else:
-                print("   ⚠️  DataFrame de validación está vacío o es None")
+                #print("   ⚠️  DataFrame de validación está vacío o es None")
                 # Create a minimal validation sheet even if empty
                 empty_validation = pd.DataFrame({
                     'Concepto': ['No se pudo crear la validación'],
@@ -2676,9 +2697,10 @@ def main():
                 })
                 try:
                     empty_validation.to_excel(writer, sheet_name='Data Validation', index=False)
-                    print("   ✅ Pestaña 'Data Validation' creada con datos mínimos")
+                    #print("   ✅ Pestaña 'Data Validation' creada con datos mínimos")
                 except Exception as e:
-                    print(f"   ❌ Error al crear pestaña mínima: {e}")
+                    pass
+                    # print(f"   ❌ Error al crear pestaña mínima: {e}")
         
         print(f"✅ Excel file created -> {output_excel}")
     except Exception as e:
