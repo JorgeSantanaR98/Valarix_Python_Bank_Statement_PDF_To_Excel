@@ -1772,8 +1772,17 @@ def main():
                 has_valid_data = bool(desc_val or has_amounts or has_cargos_abonos)
 
             if has_date:
-                row_data['page'] = page_num
-                movement_rows.append(row_data)
+                # Only add rows that have date AND (description OR amounts)
+                # This ensures we don't add incomplete rows
+                desc_val = str(row_data.get('descripcion') or '').strip()
+                has_amounts = len(row_data.get('_amounts', [])) > 0
+                has_cargos_abonos = bool(row_data.get('cargos') or row_data.get('abonos') or row_data.get('saldo'))
+                has_description_or_amounts = bool(desc_val or has_amounts or has_cargos_abonos)
+                
+                if has_description_or_amounts:
+                    row_data['page'] = page_num
+                    movement_rows.append(row_data)
+                # If row has date but no description/amounts, skip it (incomplete row)
             elif has_valid_data:
                 # Row has valid data but no date - treat as continuation or standalone row
                 if movement_rows:
@@ -1867,11 +1876,10 @@ def main():
                         else:
                             prev['descripcion'] = cont_text
                 else:
-                    # No previous movement but has valid data - create a new row with empty date
-                    # This ensures we don't lose valid data
-                    row_data['page'] = page_num
-                    row_data['fecha'] = ''  # Empty date but keep the row
-                    movement_rows.append(row_data)
+                    # No previous movement and no date - skip this row
+                    # Only rows with dates should be added to movements
+                    # Rows without dates are only used as continuation of previous rows
+                    pass
 
     # Process summary lines to format them properly
     def format_summary_line(line):
