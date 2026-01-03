@@ -46,11 +46,11 @@ BANK_CONFIGS = {
     "Inbursa": {
         "name": "Inbursa",
         "columns": {
-            "fecha": (16, 42),             # Columna Fecha de Operación
-            "descripcion": (241, 283),     # Columna Descripción
-            "cargos": (395, 427),          # Columna Cargos
-            "abonos": (462, 494),          # Columna Abonos
-            "saldo": (526, 552),           # Columna Saldo
+            "fecha": (11, 27),             # Columna Fecha de Operación
+            "descripcion": (145, 283),     # Columna Descripción
+            "cargos": (400, 441),          # Columna Cargos
+            "abonos": (475, 510),          # Columna Abonos
+            "saldo": (525, 563),           # Columna Saldo
         }
     },
 
@@ -221,21 +221,21 @@ def find_column_coordinates(pdf_path: str, page_number: int = 1):
                     rows[top] = []
                 rows[top].append(word)
             
-            # print(f"\n📄 Página {page_number} del PDF: {pdf_path}")
-            # print("=" * 120)
-            # print(f"{'Y (top)':<8} {'X0':<8} {'X1':<8} {'X_center':<10} {'Texto':<40}")
-            # print("-" * 120)
+            print(f"\n📄 Página {page_number} del PDF: {pdf_path}")
+            print("=" * 120)
+            print(f"{'Y (top)':<8} {'X0':<8} {'X1':<8} {'X_center':<10} {'Texto':<40}")
+            print("-" * 120)
             
             # Print words sorted by Y then X
             for top in sorted(rows.keys()):
                 row_words = sorted(rows[top], key=lambda w: w['x0'])
                 for i, word in enumerate(row_words):
                     x_center = (word['x0'] + word['x1']) / 2
-                    # print(f"{top:<8} {word['x0']:<8.1f} {word['x1']:<8.1f} {x_center:<10.1f} {word['text']:<40}")
+                    print(f"{top:<8} {word['x0']:<8.1f} {word['x1']:<8.1f} {x_center:<10.1f} {word['text']:<40}")
             
-            # print("\n" + "=" * 120)
-            # print("\nRangos aproximados de columnas (X0 a X1):")
-            # print("-" * 120)
+            print("\n" + "=" * 120)
+            print("\nRangos aproximados de columnas (X0 a X1):")
+            print("-" * 120)
             
             # Find column boundaries
             all_x0 = [w['x0'] for word_list in rows.values() for w in word_list]
@@ -244,8 +244,8 @@ def find_column_coordinates(pdf_path: str, page_number: int = 1):
             min_x = min(all_x0)
             max_x = max(all_x1)
             
-            # print(f"Rango X total: {min_x:.1f} a {max_x:.1f}")
-            # print("\nAnaliza la salida anterior y proporciona estos valores en BANK_CONFIGS:")
+            print(f"Rango X total: {min_x:.1f} a {max_x:.1f}")
+            print("\nAnaliza la salida anterior y proporciona estos valores en BANK_CONFIGS:")
             # print("""
             # Ejemplo:
             # BANK_CONFIGS = {
@@ -1631,7 +1631,7 @@ def main():
     # Check for --find mode
     if len(sys.argv) >= 3 and sys.argv[2] == '--find':
         page_num = int(sys.argv[3]) if len(sys.argv) > 3 else 1
-        #print(f"🔍 Buscando coordenadas en página {page_num}...")
+        print(f"🔍 Buscando coordenadas en página {page_num}...")
         find_column_coordinates(pdf_path, page_num)
         return
 
