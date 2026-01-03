@@ -1308,7 +1308,16 @@ def main():
     movement_rows = []
     # regex to detect decimal-like amounts (used to strip amounts from descriptions and detect amounts)
     dec_amount_re = re.compile(r"\d{1,3}(?:[\.,\s]\d{3})*(?:[\.,]\d{2})")
+    # Pattern to detect end of movements table for Banamex
+    movement_end_pattern = None
+    if bank_config['name'] == 'Banamex':
+        movement_end_pattern = re.compile(r'SALDO\s+MINIMO\s+REQUERIDO', re.I)
+    
+    extraction_stopped = False
     for page_data in extracted_data:
+        if extraction_stopped:
+            break
+            
         page_num = page_data['page']
         words = page_data.get('words', [])
         
@@ -1323,8 +1332,16 @@ def main():
         word_rows = group_words_by_row(words)
         
         for row_words in word_rows:
-            if not row_words:
+            if not row_words or extraction_stopped:
                 continue
+
+            # Check for end pattern (for Banamex)
+            if movement_end_pattern:
+                all_text = ' '.join([w.get('text', '') for w in row_words])
+                if movement_end_pattern.search(all_text):
+                    print(f"🛑 Fin de tabla de movimientos detectado en página {page_num}: 'SALDO MINIMO REQUERIDO'")
+                    extraction_stopped = True
+                    break
 
             # Extract structured row using coordinates
             row_data = extract_movement_row(row_words, columns_config)
@@ -1342,13 +1359,23 @@ def main():
                 # A new movement begins when the 'fecha' column contains a date token.
                 fecha_val = str(row_data.get('fecha') or '')
                 has_date = bool(date_pattern.search(fecha_val))
+            
+            # Check if row has valid data (date, description, or amounts)
+            has_valid_data = has_date
+            if not has_valid_data:
+                # Check if row has description or amounts
+                desc_val = str(row_data.get('descripcion') or '').strip()
+                has_amounts = len(row_data.get('_amounts', [])) > 0
+                has_cargos_abonos = bool(row_data.get('cargos') or row_data.get('abonos') or row_data.get('saldo'))
+                has_valid_data = bool(desc_val or has_amounts or has_cargos_abonos)
 
             if has_date:
                 row_data['page'] = page_num
                 movement_rows.append(row_data)
-            else:
-                # Continuation row: append description-like text and amounts to previous movement if exists
+            elif has_valid_data:
+                # Row has valid data but no date - treat as continuation or standalone row
                 if movement_rows:
+                    # Continuation row: append description-like text and amounts to previous movement
                     prev = movement_rows[-1]
                     
                     # First, capture amounts from continuation row and assign to appropriate columns
@@ -1438,8 +1465,11 @@ def main():
                         else:
                             prev['descripcion'] = cont_text
                 else:
-                    # No previous movement to attach to; ignore or treat as header
-                    continue
+                    # No previous movement but has valid data - create a new row with empty date
+                    # This ensures we don't lose valid data
+                    row_data['page'] = page_num
+                    row_data['fecha'] = ''  # Empty date but keep the row
+                    movement_rows.append(row_data)
 
     # Process summary lines to format them properly
     def format_summary_line(line):
@@ -2068,8 +2098,10 @@ def main():
             print(f"   ✅ Filas removidas de Movements")
     
     # Filter Transferencias and DIGITEM rows from Movements for Banamex
-    # FIRST: Move rows below EMP rows to Transferencias
-    # THEN: Move EMP rows to DIGITEM
+    # Logic: 
+    # 1. Iterate row by row to find rows with "EMP" and move them to DIGITEM
+    # 2. Identify the LAST row with "EMP"
+    # 3. From that last EMP row position onwards, move all remaining rows to Transferencias
     # This must be done BEFORE calculating totals for validation
     df_transferencias = None
     df_digitem = None
@@ -2087,69 +2119,19 @@ def main():
                 break
         
         if desc_col:
-            # First pass: identify rows with "EMP" and rows immediately below them
-            emp_row_indices = []
-            transferencias_row_indices = []
-            
-            # Identify rows with "EMP" in description
-            for idx, row in df_mov.iterrows():
-                desc_text = str(row.get(desc_col, '')).upper()
-                if 'EMP' in desc_text:
-                    emp_row_indices.append(idx)
-            
-            # Identify rows immediately below EMP rows (Transferencias)
+            # Get all indices in order
             df_indices = df_mov.index.tolist()
-            for emp_idx in emp_row_indices:
-                if emp_idx in df_indices:
-                    emp_pos = df_indices.index(emp_idx)
-                    # Check if there's a next row
-                    if emp_pos + 1 < len(df_indices):
-                        next_idx = df_indices[emp_pos + 1]
-                        # Only add if it's not already an EMP row
-                        if next_idx not in emp_row_indices and next_idx not in transferencias_row_indices:
-                            transferencias_row_indices.append(next_idx)
+            last_emp_position = None
             
-            # Extract Transferencias rows (rows below EMP rows) - FIRST
-            if transferencias_row_indices:
-                print(f"🔍 Extrayendo {len(transferencias_row_indices)} filas para Transferencias...")
-                for idx in transferencias_row_indices:
-                    row = df_mov.loc[idx]
-                    
-                    # Get date
-                    fecha = ''
-                    for col in ['Fecha', 'Fecha Oper', 'fecha']:
-                        if col in df_mov.columns:
-                            fecha_val = row.get(col, '')
-                            if fecha_val:
-                                fecha = str(fecha_val).strip()
-                                break
-                    
-                    # Get description
-                    descripcion = str(row.get(desc_col, '')).strip() if desc_col else ''
-                    
-                    # Get importe (could be from Cargos, Abonos, or Saldo)
-                    importe = ''
-                    for col in ['Cargos', 'Abonos', 'Saldo', 'cargos', 'abonos', 'saldo']:
-                        if col in df_mov.columns:
-                            importe_val = row.get(col, '')
-                            if importe_val and str(importe_val).strip():
-                                importe = str(importe_val).strip()
-                                break
-                    
-                    if fecha and descripcion:
-                        transferencias_rows.append({
-                            'Fecha': fecha,
-                            'Descripción': descripcion,
-                            'Importe': importe
-                        })
-                        rows_to_remove.append(idx)
-                        print(f"   ✅ Fila Transferencias encontrada: {fecha} - {descripcion[:50]}... - {importe}")
-            
-            # Extract DIGITEM rows (rows with "EMP" in description) - AFTER Transferencias
-            if emp_row_indices:
-                print(f"🔍 Extrayendo {len(emp_row_indices)} filas para DIGITEM...")
-                for idx in emp_row_indices:
-                    row = df_mov.loc[idx]
+            # Step 1: Iterate row by row to find rows with "EMP" and move them to DIGITEM
+            print("🔍 Buscando filas con 'EMP' para mover a DIGITEM...")
+            for pos, idx in enumerate(df_indices):
+                row = df_mov.loc[idx]
+                desc_text = str(row.get(desc_col, '')).upper()
+                
+                if 'EMP' in desc_text:
+                    # This is an EMP row, move it to DIGITEM
+                    last_emp_position = pos  # Track the position of the last EMP row
                     
                     # Get date
                     fecha = ''
@@ -2179,7 +2161,53 @@ def main():
                             'Importe': importe
                         })
                         rows_to_remove.append(idx)
-                        print(f"   ✅ Fila DIGITEM encontrada: {fecha} - {descripcion[:50]}... - {importe}")
+                        print(f"   ✅ Fila DIGITEM encontrada (posición {pos+1}): {fecha} - {descripcion[:50]}... - {importe}")
+            
+            # Step 2: From the last EMP row position onwards, move all remaining rows to Transferencias
+            if last_emp_position is not None:
+                print(f"🔍 Moviendo filas desde posición {last_emp_position + 2} hasta el final a Transferencias...")
+                # Start from the row immediately after the last EMP row
+                start_pos = last_emp_position + 1
+                
+                for pos in range(start_pos, len(df_indices)):
+                    idx = df_indices[pos]
+                    # Skip if this row was already marked for removal (shouldn't happen, but safety check)
+                    if idx in rows_to_remove:
+                        continue
+                    
+                    row = df_mov.loc[idx]
+                    
+                    # Get date
+                    fecha = ''
+                    for col in ['Fecha', 'Fecha Oper', 'fecha']:
+                        if col in df_mov.columns:
+                            fecha_val = row.get(col, '')
+                            if fecha_val:
+                                fecha = str(fecha_val).strip()
+                                break
+                    
+                    # Get description
+                    descripcion = str(row.get(desc_col, '')).strip() if desc_col else ''
+                    
+                    # Get importe (could be from Cargos, Abonos, or Saldo)
+                    importe = ''
+                    for col in ['Cargos', 'Abonos', 'Saldo', 'cargos', 'abonos', 'saldo']:
+                        if col in df_mov.columns:
+                            importe_val = row.get(col, '')
+                            if importe_val and str(importe_val).strip():
+                                importe = str(importe_val).strip()
+                                break
+                    
+                    # Include all rows, even if fecha or descripcion is empty (to ensure last row is included)
+                    # Only require that the row has some content (descripcion or importe)
+                    if descripcion or importe or fecha:
+                        transferencias_rows.append({
+                            'Fecha': fecha if fecha else '',
+                            'Descripción': descripcion if descripcion else '',
+                            'Importe': importe if importe else ''
+                        })
+                        rows_to_remove.append(idx)
+                        print(f"   ✅ Fila Transferencias encontrada (posición {pos+1}): {fecha if fecha else 'N/A'} - {descripcion[:50] if descripcion else 'N/A'}... - {importe if importe else 'N/A'}")
         
         # Remove all filtered rows from Movements (Transferencias + DIGITEM)
         if rows_to_remove:
