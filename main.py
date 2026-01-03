@@ -1042,6 +1042,393 @@ def print_validation_summary(pdf_summary: dict, extracted_totals: dict, validati
     print("=" * 80 + "\n")
 
 
+def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame:
+    """
+    Extract DIGITEM section from Banamex PDF using the same coordinate-based extraction as Movements.
+    Section starts with "DIGITEM" and ends with "TRANSFERENCIA ELECTRONICA DE FONDOS".
+    Returns a DataFrame with columns: Fecha, Descripción, Importe
+    """
+    digitem_rows = []
+    
+    try:
+        # Use the same extraction method as Movements
+        extracted_data = extract_text_from_pdf(pdf_path)
+        date_pattern = re.compile(r"\b(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}\b")
+        dec_amount_re = re.compile(r"\d{1,3}(?:[\.,\s]\d{3})*(?:[\.,]\d{2})")
+        
+        in_digitem_section = False
+        extraction_stopped = False
+        
+        for page_data in extracted_data:
+            if extraction_stopped:
+                break
+                
+            page_num = page_data['page']
+            words = page_data.get('words', [])
+            text = page_data.get('content', '')
+            
+            if not words and not text:
+                continue
+            
+            # DIGITEM section cannot be on the first page - skip page 1
+            if page_num == 1:
+                continue
+            
+            # Check if we're entering DIGITEM section (starting from page 2)
+            if not in_digitem_section:
+                # Check both text and words for "DIGITEM"
+                if re.search(r'\bDIGITEM\b', text, re.I):
+                    in_digitem_section = True
+                    print(f"📄 Sección DIGITEM encontrada en página {page_num}")
+                    # Skip the header line "DETALLE DE OPERACIONES" that comes after DIGITEM
+                    skip_next_line = True
+                else:
+                    # Also check in words (in case text extraction missed it)
+                    all_words_text = ' '.join([w.get('text', '') for w in words])
+                    if re.search(r'\bDIGITEM\b', all_words_text, re.I):
+                        in_digitem_section = True
+                        print(f"📄 Sección DIGITEM encontrada en página {page_num} (desde words)")
+                        skip_next_line = True
+                    else:
+                        continue
+            else:
+                skip_next_line = False
+            
+            # Extract rows using coordinate-based method (same as Movements)
+            if in_digitem_section and words:
+                # Group words by row
+                word_rows = group_words_by_row(words)
+                
+                for row_words in word_rows:
+                    if not row_words:
+                        continue
+                    
+                    # Check if we're leaving DIGITEM section (check each row)
+                    all_row_text = ' '.join([w.get('text', '') for w in row_words])
+                    if re.search(r'TRANSFERENCIA\s+ELECTRONICA\s+DE\s+FONDOS', all_row_text, re.I):
+                        print(f"📄 Fin de sección DIGITEM encontrado en página {page_num}")
+                        extraction_stopped = True
+                        break
+                    
+                    # Skip header line "DETALLE DE OPERACIONES" that comes right after DIGITEM
+                    if skip_next_line:
+                        if re.search(r'DETALLE\s+DE\s+OPERACIONES', all_row_text, re.I):
+                            print(f"   ⏭️  Saltando línea de encabezado: DETALLE DE OPERACIONES")
+                            skip_next_line = False
+                            continue
+                        else:
+                            skip_next_line = False  # Reset if we didn't find it
+                    
+                    if extraction_stopped:
+                        break
+                    
+                    # Extract structured row using coordinates (same as Movements)
+                    row_data = extract_movement_row(row_words, columns_config)
+                    
+                    # Check if this row has a date (same logic as Movements)
+                    fecha_val = str(row_data.get('fecha') or '')
+                    has_date = bool(date_pattern.search(fecha_val))
+                    
+                    # Check if description contains "EMP" (required for DIGITEM rows)
+                    desc_val = str(row_data.get('descripcion') or '')
+                    has_emp = 'EMP' in desc_val.upper()
+                    
+                    # Debug: print row info for rows that might be DIGITEM
+                    if has_date or has_emp or any(row_data.get(k) for k in ['cargos', 'abonos', 'saldo'] if row_data.get(k)):
+                        print(f"   🔍 Fila potencial DIGITEM - Fecha: {fecha_val[:20] if fecha_val else 'N/A'}, has_date: {has_date}, has_EMP: {has_emp}, Desc: {desc_val[:50] if desc_val else 'N/A'}")
+                    
+                    if has_date and has_emp:
+                        # This is a valid DIGITEM row (has date and EMP in description)
+                        row_data['page'] = page_num
+                        digitem_rows.append(row_data)
+                        print(f"   ✅ Fila DIGITEM agregada (total: {len(digitem_rows)})")
+                    else:
+                        # Continuation row: append to previous DIGITEM row if exists and has EMP
+                        if digitem_rows:
+                            prev = digitem_rows[-1]
+                            
+                            # Check if previous row has EMP (to ensure we're continuing a DIGITEM row)
+                            prev_desc = str(prev.get('descripcion') or '')
+                            if 'EMP' in prev_desc.upper():
+                                # Merge amounts from continuation row
+                                cont_amounts = row_data.get('_amounts', [])
+                                if cont_amounts and columns_config:
+                                    # Get description range
+                                    descripcion_range = None
+                                    if 'descripcion' in columns_config:
+                                        x0, x1 = columns_config['descripcion']
+                                        descripcion_range = (x0, x1)
+                                    
+                                    # Get column ranges for numeric columns
+                                    col_ranges = {}
+                                    for col in ('cargos', 'abonos', 'saldo'):
+                                        if col in columns_config:
+                                            x0, x1 = columns_config[col]
+                                            col_ranges[col] = (x0, x1)
+                                    
+                                    # Assign amounts from continuation row
+                                    tolerance = 10
+                                    for amt_text, center in cont_amounts:
+                                        if descripcion_range and descripcion_range[0] <= center <= descripcion_range[1]:
+                                            continue
+                                        
+                                        assigned = False
+                                        for col in ('cargos', 'abonos', 'saldo'):
+                                            if col in col_ranges:
+                                                x0, x1 = col_ranges[col]
+                                                if (x0 - tolerance) <= center <= (x1 + tolerance):
+                                                    existing = prev.get(col) or ''
+                                                    if not existing or amt_text not in existing:
+                                                        if existing:
+                                                            prev[col] = (existing + ' ' + amt_text).strip()
+                                                        else:
+                                                            prev[col] = amt_text
+                                                    assigned = True
+                                                    break
+                                
+                                # Merge amounts list
+                                prev_amounts = prev.get('_amounts', [])
+                                prev['_amounts'] = prev_amounts + cont_amounts
+                                
+                                # Collect text pieces from continuation row
+                                cont_parts = []
+                                for k in ('descripcion', 'fecha'):
+                                    v = row_data.get(k)
+                                    if v:
+                                        cont_parts.append(str(v))
+                                
+                                cont_text = ' '.join(cont_parts)
+                                cont_text = dec_amount_re.sub('', cont_text)
+                                cont_text = ' '.join(cont_text.split()).strip()
+                                
+                                if cont_text:
+                                    if prev.get('descripcion'):
+                                        prev['descripcion'] = (prev.get('descripcion') or '') + ' ' + cont_text
+                                    else:
+                                        prev['descripcion'] = cont_text
+        
+        # Debug: print summary
+        print(f"🔍 Total de filas DIGITEM encontradas: {len(digitem_rows)}")
+        if digitem_rows:
+            print(f"   📋 Primeras 3 filas:")
+            for i, r in enumerate(digitem_rows[:3]):
+                print(f"      Fila {i+1}: fecha={r.get('fecha', 'N/A')[:20]}, desc={str(r.get('descripcion', 'N/A'))[:50]}")
+        
+        # Process digitem_rows similar to how movements are processed
+        if digitem_rows:
+            # Reassign amounts to appropriate columns (same logic as Movements)
+            col_centers = {}
+            col_ranges = {}
+            descripcion_range = None
+            
+            if 'descripcion' in columns_config:
+                x0, x1 = columns_config['descripcion']
+                descripcion_range = (x0, x1)
+            
+            for col in ('cargos', 'abonos', 'saldo'):
+                if col in columns_config:
+                    x0, x1 = columns_config[col]
+                    col_centers[col] = (x0 + x1) / 2
+                    col_ranges[col] = (x0, x1)
+            
+            for r in digitem_rows:
+                amounts = r.get('_amounts', [])
+                if not amounts:
+                    continue
+                
+                for amt_text, center in amounts:
+                    tolerance = 10
+                    assigned = False
+                    
+                    # Check numeric columns first
+                    for col in ('cargos', 'abonos', 'saldo'):
+                        if col in col_ranges:
+                            x0, x1 = col_ranges[col]
+                            if (x0 - tolerance) <= center <= (x1 + tolerance):
+                                existing = r.get(col, '').strip()
+                                if not existing:
+                                    r[col] = amt_text
+                                    assigned = True
+                                    break
+                    
+                    # Remove amount from description
+                    if not assigned and descripcion_range:
+                        if descripcion_range[0] <= center <= descripcion_range[1]:
+                            continue
+                
+                # Remove amount tokens from descripcion
+                if r.get('descripcion'):
+                    r['descripcion'] = DEC_AMOUNT_RE.sub('', r.get('descripcion'))
+                
+                # Cleanup helper key
+                if '_amounts' in r:
+                    del r['_amounts']
+            
+            # Convert to DataFrame and format columns
+            df_digitem = pd.DataFrame(digitem_rows)
+            
+            # Extract dates and format columns
+            if 'fecha' in df_digitem.columns:
+                dates = df_digitem['fecha'].astype(str).apply(lambda txt: _extract_two_dates(txt) if txt else (None, None))
+                df_digitem['Fecha'] = dates.apply(lambda t: t[0])
+            else:
+                df_digitem['Fecha'] = ''
+            
+            # Build description
+            def _build_digitem_description(row):
+                parts = []
+                if 'descripcion' in row and row.get('descripcion'):
+                    parts.append(str(row.get('descripcion')))
+                text = ' '.join(parts)
+                text = dec_amount_re.sub('', text)
+                text = ' '.join(text.split()).strip()
+                return text if text else ''
+            
+            df_digitem['Descripción'] = df_digitem.apply(_build_digitem_description, axis=1)
+            
+            # Get Importe from cargos, abonos, or saldo (whichever has value)
+            def _get_importe(row):
+                for col in ['cargos', 'abonos', 'saldo']:
+                    if col in row and row.get(col):
+                        return str(row.get(col)).strip()
+                return ''
+            
+            df_digitem['Importe'] = df_digitem.apply(_get_importe, axis=1)
+            
+            # Keep only needed columns
+            df_digitem = df_digitem[['Fecha', 'Descripción', 'Importe']]
+            
+            print(f"✅ Se extrajeron {len(df_digitem)} registros de DIGITEM del PDF")
+            return df_digitem
+        else:
+            print("ℹ️  No se encontró sección DIGITEM en el PDF")
+            return pd.DataFrame(columns=['Fecha', 'Descripción', 'Importe'])
+    
+    except Exception as e:
+        print(f"⚠️  Error al extraer DIGITEM del PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame(columns=['Fecha', 'Descripción', 'Importe'])
+
+
+def _extract_two_dates(txt):
+    """Helper function to extract dates (same as in main function)"""
+    if not txt or not isinstance(txt, str):
+        return (None, None)
+    date_pattern = re.compile(r"(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}", re.I)
+    found = date_pattern.findall(txt)
+    if not found:
+        return (None, None)
+    if len(found) == 1:
+        return (found[0], None)
+    return (found[0], found[1])
+
+
+def extract_transferencia_section(pdf_path: str) -> pd.DataFrame:
+    """
+    Extract TRANSFERENCIA ELECTRONICA DE FONDOS section from Banamex PDF.
+    Section starts with "TRANSFERENCIA ELECTRONICA DE FONDOS" and ends with "TOTALES:".
+    Returns a DataFrame with columns: Fecha, Descripción, Importe, Comisiones, I.V.A, Total
+    """
+    transferencia_rows = []
+    
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            in_transferencia_section = False
+            
+            for page_num, page in enumerate(pdf.pages, start=1):
+                text = page.extract_text()
+                if not text:
+                    continue
+                
+                lines = text.split('\n')
+                
+                for line in lines:
+                    line_clean = line.strip()
+                    if not line_clean:
+                        continue
+                    
+                    # Check if we're entering TRANSFERENCIA section
+                    if re.search(r'TRANSFERENCIA\s+ELECTRONICA\s+DE\s+FONDOS', line_clean, re.I):
+                        in_transferencia_section = True
+                        print(f"📄 Sección TRANSFERENCIA encontrada en página {page_num}")
+                        continue
+                    
+                    # Check if we're leaving TRANSFERENCIA section
+                    if in_transferencia_section and re.search(r'^TOTALES:', line_clean, re.I):
+                        print(f"📄 Fin de sección TRANSFERENCIA encontrado en página {page_num}")
+                        break
+                    
+                    # Extract rows from TRANSFERENCIA section
+                    if in_transferencia_section:
+                        # Try to extract date (DD MMM format)
+                        date_match = re.search(r'(\d{1,2})\s+([A-Z]{3})', line_clean)
+                        if date_match:
+                            fecha = f"{date_match.group(1)} {date_match.group(2)}"
+                            
+                            # Extract all amounts in the line
+                            amounts = DEC_AMOUNT_RE.findall(line_clean)
+                            
+                            # Typically: Importe, Comisiones, I.V.A, Total
+                            importe = amounts[0] if len(amounts) > 0 else ''
+                            comisiones = amounts[1] if len(amounts) > 1 else ''
+                            iva = amounts[2] if len(amounts) > 2 else ''
+                            total = amounts[3] if len(amounts) > 3 else (amounts[-1] if len(amounts) > 0 else '')
+                            
+                            # Extract description (everything between date and first amount)
+                            desc_start = date_match.end()
+                            if amounts:
+                                desc_end = line_clean.find(amounts[0])
+                                descripcion = line_clean[desc_start:desc_end].strip()
+                            else:
+                                descripcion = line_clean[desc_start:].strip()
+                            
+                            if fecha and descripcion:
+                                transferencia_rows.append({
+                                    'Fecha': fecha,
+                                    'Descripción': descripcion,
+                                    'Importe': importe,
+                                    'Comisiones': comisiones,
+                                    'I.V.A': iva,
+                                    'Total': total
+                                })
+                        else:
+                            # Multi-line entry - append to previous row's description
+                            if transferencia_rows and line_clean:
+                                # Check if line has amounts
+                                amounts = DEC_AMOUNT_RE.findall(line_clean)
+                                if amounts:
+                                    # Update amounts in previous row
+                                    if len(amounts) >= 1 and not transferencia_rows[-1]['Importe']:
+                                        transferencia_rows[-1]['Importe'] = amounts[0]
+                                    if len(amounts) >= 2 and not transferencia_rows[-1]['Comisiones']:
+                                        transferencia_rows[-1]['Comisiones'] = amounts[1]
+                                    if len(amounts) >= 3 and not transferencia_rows[-1]['I.V.A']:
+                                        transferencia_rows[-1]['I.V.A'] = amounts[2]
+                                    if len(amounts) >= 4 and not transferencia_rows[-1]['Total']:
+                                        transferencia_rows[-1]['Total'] = amounts[3]
+                                else:
+                                    # Just description continuation
+                                    if transferencia_rows[-1]['Descripción']:
+                                        transferencia_rows[-1]['Descripción'] += ' ' + line_clean
+                                    else:
+                                        transferencia_rows[-1]['Descripción'] = line_clean
+        
+        if transferencia_rows:
+            df_transferencia = pd.DataFrame(transferencia_rows)
+            print(f"✅ Se extrajeron {len(df_transferencia)} registros de TRANSFERENCIA del PDF")
+            return df_transferencia
+        else:
+            print("ℹ️  No se encontró sección TRANSFERENCIA en el PDF")
+            return pd.DataFrame(columns=['Fecha', 'Descripción', 'Importe', 'Comisiones', 'I.V.A', 'Total'])
+    
+    except Exception as e:
+        print(f"⚠️  Error al extraer TRANSFERENCIA del PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame(columns=['Fecha', 'Descripción', 'Importe', 'Comisiones', 'I.V.A', 'Total'])
+
+
 def extract_text_from_pdf(pdf_path: str) -> list:
     """
     Extract text and word positions from each page of a PDF.
@@ -2097,135 +2484,21 @@ def main():
             df_mov = df_mov.drop(index=info_rows_to_remove).reset_index(drop=True)
             print(f"   ✅ Filas removidas de Movements")
     
-    # Filter Transferencias and DIGITEM rows from Movements for Banamex
-    # Logic: 
-    # 1. Iterate row by row to find rows with "EMP" and move them to DIGITEM
-    # 2. Identify the LAST row with "EMP"
-    # 3. From that last EMP row position onwards, move all remaining rows to Transferencias
+    # Extract DIGITEM and Transferencias sections directly from PDF for Banamex
     # This must be done BEFORE calculating totals for validation
     df_transferencias = None
     df_digitem = None
     if bank_config['name'] == 'Banamex':
-        print("🔍 Filtrando filas Transferencias y DIGITEM de Movements...")
-        transferencias_rows = []
-        digitem_rows = []
-        rows_to_remove = []
+        print("🔍 Extrayendo secciones DIGITEM y TRANSFERENCIA directamente del PDF...")
         
-        # Get description column name
-        desc_col = None
-        for col in ['Descripción', 'Descripcion', 'descripcion', 'raw']:
-            if col in df_mov.columns:
-                desc_col = col
-                break
+        # Extract DIGITEM section from PDF using same coordinate-based extraction as Movements
+        df_digitem = extract_digitem_section(pdf_path, columns_config)
         
-        if desc_col:
-            # Get all indices in order
-            df_indices = df_mov.index.tolist()
-            last_emp_position = None
-            
-            # Step 1: Iterate row by row to find rows with "EMP" and move them to DIGITEM
-            print("🔍 Buscando filas con 'EMP' para mover a DIGITEM...")
-            for pos, idx in enumerate(df_indices):
-                row = df_mov.loc[idx]
-                desc_text = str(row.get(desc_col, '')).upper()
-                
-                if 'EMP' in desc_text:
-                    # This is an EMP row, move it to DIGITEM
-                    last_emp_position = pos  # Track the position of the last EMP row
-                    
-                    # Get date
-                    fecha = ''
-                    for col in ['Fecha', 'Fecha Oper', 'fecha']:
-                        if col in df_mov.columns:
-                            fecha_val = row.get(col, '')
-                            if fecha_val:
-                                fecha = str(fecha_val).strip()
-                                break
-                    
-                    # Get description
-                    descripcion = str(row.get(desc_col, '')).strip() if desc_col else ''
-                    
-                    # Get importe (could be from Cargos, Abonos, or Saldo)
-                    importe = ''
-                    for col in ['Cargos', 'Abonos', 'Saldo', 'cargos', 'abonos', 'saldo']:
-                        if col in df_mov.columns:
-                            importe_val = row.get(col, '')
-                            if importe_val and str(importe_val).strip():
-                                importe = str(importe_val).strip()
-                                break
-                    
-                    if fecha and descripcion and importe:
-                        digitem_rows.append({
-                            'Fecha': fecha,
-                            'Descripción': descripcion,
-                            'Importe': importe
-                        })
-                        rows_to_remove.append(idx)
-                        print(f"   ✅ Fila DIGITEM encontrada (posición {pos+1}): {fecha} - {descripcion[:50]}... - {importe}")
-            
-            # Step 2: From the last EMP row position onwards, move all remaining rows to Transferencias
-            if last_emp_position is not None:
-                print(f"🔍 Moviendo filas desde posición {last_emp_position + 2} hasta el final a Transferencias...")
-                # Start from the row immediately after the last EMP row
-                start_pos = last_emp_position + 1
-                
-                for pos in range(start_pos, len(df_indices)):
-                    idx = df_indices[pos]
-                    # Skip if this row was already marked for removal (shouldn't happen, but safety check)
-                    if idx in rows_to_remove:
-                        continue
-                    
-                    row = df_mov.loc[idx]
-                    
-                    # Get date
-                    fecha = ''
-                    for col in ['Fecha', 'Fecha Oper', 'fecha']:
-                        if col in df_mov.columns:
-                            fecha_val = row.get(col, '')
-                            if fecha_val:
-                                fecha = str(fecha_val).strip()
-                                break
-                    
-                    # Get description
-                    descripcion = str(row.get(desc_col, '')).strip() if desc_col else ''
-                    
-                    # Get importe (could be from Cargos, Abonos, or Saldo)
-                    importe = ''
-                    for col in ['Cargos', 'Abonos', 'Saldo', 'cargos', 'abonos', 'saldo']:
-                        if col in df_mov.columns:
-                            importe_val = row.get(col, '')
-                            if importe_val and str(importe_val).strip():
-                                importe = str(importe_val).strip()
-                                break
-                    
-                    # Include all rows, even if fecha or descripcion is empty (to ensure last row is included)
-                    # Only require that the row has some content (descripcion or importe)
-                    if descripcion or importe or fecha:
-                        transferencias_rows.append({
-                            'Fecha': fecha if fecha else '',
-                            'Descripción': descripcion if descripcion else '',
-                            'Importe': importe if importe else ''
-                        })
-                        rows_to_remove.append(idx)
-                        print(f"   ✅ Fila Transferencias encontrada (posición {pos+1}): {fecha if fecha else 'N/A'} - {descripcion[:50] if descripcion else 'N/A'}... - {importe if importe else 'N/A'}")
+        # Extract Transferencias section from PDF
+        df_transferencias = extract_transferencia_section(pdf_path)
         
-        # Remove all filtered rows from Movements (Transferencias + DIGITEM)
-        if rows_to_remove:
-            print(f"   📝 Removiendo {len(rows_to_remove)} filas (Transferencias + DIGITEM) de Movements...")
-            df_mov = df_mov.drop(index=rows_to_remove).reset_index(drop=True)
-            print(f"   ✅ Filas removidas de Movements")
-        
-        # Create Transferencias DataFrame if there are rows
-        if transferencias_rows:
-            df_transferencias = pd.DataFrame(transferencias_rows)
-            print(f"✅ Se crearon {len(df_transferencias)} registros de Transferencias")
-        
-        # Create DIGITEM DataFrame if there are rows
-        if digitem_rows:
-            df_digitem = pd.DataFrame(digitem_rows)
-            print(f"✅ Se crearon {len(df_digitem)} registros de DIGITEM")
-            
-            # Add total row for DIGITEM
+        # Add total row for DIGITEM if there are rows
+        if df_digitem is not None and not df_digitem.empty and len(df_digitem) > 0:
             print("📊 Agregando fila de totales para DIGITEM...")
             total_row_digitem = {
                 'Fecha': 'Total',
@@ -2246,8 +2519,51 @@ def main():
             total_df_digitem = pd.DataFrame([total_row_digitem])
             df_digitem = pd.concat([df_digitem, total_df_digitem], ignore_index=True)
             print(f"✅ Fila de totales agregada a DIGITEM")
-        else:
-            print("ℹ️  No se encontraron filas DIGITEM para mover")
+        
+        # Add total row for Transferencias if there are rows
+        if df_transferencias is not None and not df_transferencias.empty and len(df_transferencias) > 0:
+            print("📊 Agregando fila de totales para Transferencias...")
+            total_row_transferencia = {
+                'Fecha': 'Total',
+                'Descripción': '',
+                'Importe': '',
+                'Comisiones': '',
+                'I.V.A': '',
+                'Total': ''
+            }
+            
+            # Calculate totals for all numeric columns
+            try:
+                if 'Importe' in df_transferencias.columns:
+                    importe_values = df_transferencias['Importe'].apply(lambda x: normalize_amount_str(x) if pd.notna(x) and str(x).strip() else 0.0)
+                    total_importe = importe_values.sum()
+                    if total_importe > 0:
+                        total_row_transferencia['Importe'] = f"{total_importe:,.2f}"
+                
+                if 'Comisiones' in df_transferencias.columns:
+                    comisiones_values = df_transferencias['Comisiones'].apply(lambda x: normalize_amount_str(x) if pd.notna(x) and str(x).strip() else 0.0)
+                    total_comisiones = comisiones_values.sum()
+                    if total_comisiones > 0:
+                        total_row_transferencia['Comisiones'] = f"{total_comisiones:,.2f}"
+                
+                if 'I.V.A' in df_transferencias.columns:
+                    iva_values = df_transferencias['I.V.A'].apply(lambda x: normalize_amount_str(x) if pd.notna(x) and str(x).strip() else 0.0)
+                    total_iva = iva_values.sum()
+                    if total_iva > 0:
+                        total_row_transferencia['I.V.A'] = f"{total_iva:,.2f}"
+                
+                if 'Total' in df_transferencias.columns:
+                    total_values = df_transferencias['Total'].apply(lambda x: normalize_amount_str(x) if pd.notna(x) and str(x).strip() else 0.0)
+                    total_total = total_values.sum()
+                    if total_total > 0:
+                        total_row_transferencia['Total'] = f"{total_total:,.2f}"
+            except Exception as e:
+                print(f"⚠️  Error al calcular totales en Transferencias: {e}")
+            
+            # Append total row
+            total_df_transferencia = pd.DataFrame([total_row_transferencia])
+            df_transferencias = pd.concat([df_transferencias, total_df_transferencia], ignore_index=True)
+            print(f"✅ Fila de totales agregada a Transferencias")
     
     # Extract summary from PDF and calculate totals for validation
     # IMPORTANT: Calculate totals AFTER removing DIGITEM rows and BEFORE adding the "Total" row
