@@ -1683,15 +1683,45 @@ def extract_movement_row(words, columns, bank_name=None, date_pattern=None):
             amounts.append((m.group(), center))
 
         # Check if word contains a date followed by description text (especially for Banorte)
-        # Example: "12-ENE-23EST EPIGMENIO" should be split into "12-ENE-23" and "EST EPIGMENIO"
+        # Example: "12-ENE-23EST EPIGMENIO" or "30-ENE-23I.V.A" should be split correctly
         date_match = date_pattern.search(text)
         if date_match and 'fecha' in columns and 'descripcion' in columns:
             date_text = date_match.group()
             date_end_pos = date_match.end()
             
+            # For Banorte format "DIA-MES-AÑO", check if the date pattern captured the full date
+            # Sometimes the pattern might only capture "30-ENE" and miss "-23"
+            # Try to find a more complete date match by looking for the full pattern
+            if bank_name == 'Banorte':
+                # Pattern specifically for Banorte: DIA-MES-AÑO (e.g., "30-ENE-23")
+                banorte_date_pattern = re.compile(r'(\d{1,2}-[A-Z]{3}-\d{2,4})', re.I)
+                banorte_match = banorte_date_pattern.search(text)
+                if banorte_match:
+                    date_text = banorte_match.group(1)  # Full date including year
+                    date_end_pos = banorte_match.end()
+            
             # If there's text after the date, split it
             if date_end_pos < len(text):
                 description_text = text[date_end_pos:].strip()
+                
+                # Remove leading hyphen if it's part of the date (e.g., "-23" from "30-ENE-23")
+                # This happens when the date pattern didn't capture the full date
+                if description_text.startswith('-') and len(description_text) > 1:
+                    # Check if the next characters are digits (likely part of year)
+                    next_chars = description_text[1:4]  # Check up to 3 digits
+                    if next_chars.isdigit():
+                        # This is likely part of the date, not description
+                        # Try to reconstruct the full date
+                        potential_year = description_text[1:3] if len(description_text) > 3 else description_text[1:]
+                        if potential_year.isdigit():
+                            # Check if we can find a date pattern that includes this
+                            # Don't use word boundaries since the date might be at the start of text
+                            full_date_pattern = re.compile(r'(\d{1,2}-[A-Z]{3}-\d{2,4})', re.I)
+                            full_match = full_date_pattern.search(text)
+                            if full_match:
+                                date_text = full_match.group(1)
+                                date_end_pos = full_match.end()
+                                description_text = text[date_end_pos:].strip()
                 
                 # Check which column this word's center belongs to
                 fecha_col_center = None
@@ -1703,25 +1733,19 @@ def extract_movement_row(words, columns, bank_name=None, date_pattern=None):
                     descripcion_x0, descripcion_x1 = columns['descripcion']
                     descripcion_col_center = (descripcion_x0 + descripcion_x1) / 2
                 
-                # If the word center is closer to fecha column, assign date to fecha and description to descripcion
-                # Otherwise, if it's closer to descripcion, still split them
-                if fecha_col_center is not None and descripcion_col_center is not None:
-                    dist_to_fecha = abs(center - fecha_col_center)
-                    dist_to_descripcion = abs(center - descripcion_col_center)
-                    
-                    # Always split: assign date to fecha column and description to descripcion column
-                    if row_data['fecha']:
-                        row_data['fecha'] += ' ' + date_text
+                # Always split: assign date to fecha column and description to descripcion column
+                if row_data['fecha']:
+                    row_data['fecha'] += ' ' + date_text
+                else:
+                    row_data['fecha'] = date_text
+                
+                if description_text:
+                    if row_data['descripcion']:
+                        row_data['descripcion'] += ' ' + description_text
                     else:
-                        row_data['fecha'] = date_text
-                    
-                    if description_text:
-                        if row_data['descripcion']:
-                            row_data['descripcion'] += ' ' + description_text
-                        else:
-                            row_data['descripcion'] = description_text
-                    
-                    continue  # Skip normal assignment for this word
+                        row_data['descripcion'] = description_text
+                
+                continue  # Skip normal assignment for this word
         
         # Normal column assignment
         col_name = assign_word_to_column(x0, x1, columns)
