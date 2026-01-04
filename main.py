@@ -458,26 +458,87 @@ def extract_summary_from_pdf(pdf_path: str) -> dict:
                                 summary_data['saldo_anterior'] = amount
             
             elif bank_name == "Santander":
-                # Santander: "TOTAL 821,646.20 820,238.73 1,417.18" - primer valor es depósitos, segundo retiros, tercero saldo
-                # This appears at the end of movements table
-                #print(f"🔍 Buscando patrones Santander en {len(all_lines)} líneas...")
-                for i, line in enumerate(all_lines):
-                    match = re.search(r'TOTAL\s+([\d,\.]+)\s+([\d,\.]+)\s+([\d,\.]+)', line, re.I)
-                    if match:
-                        depositos = normalize_amount_str(match.group(1))
-                        retiros = normalize_amount_str(match.group(2))
-                        saldo = normalize_amount_str(match.group(3))
-                        #print(f"✅ Santander: Encontrado TOTAL en línea {i+1}: {line[:100]}")
-                        #print(f"   Depósitos: ${depositos:,.2f}, Retiros: ${retiros:,.2f}, Saldo: ${saldo:,.2f}")
-                        if depositos > 0:
-                            summary_data['total_depositos'] = depositos
-                            summary_data['total_abonos'] = depositos
-                        if retiros > 0:
-                            summary_data['total_retiros'] = retiros
-                            summary_data['total_cargos'] = retiros
-                        if saldo > 0:
-                            summary_data['saldo_final'] = saldo
-                        break
+                # Santander: Extract from first page, section between "CUENTA DE CHEQUES" and "GRAFICO CUENTA DE CHEQUES"
+                # Patterns:
+                # "+ DEPOSITOS 821,646.20" -> Total de Abonos
+                # "- RETIROS 820,238.73" -> Total de Retiros
+                # "SALDO ACTUAL 1,417.18" -> Saldo Final
+                #print(f"🔍 Buscando patrones Santander en primera página...")
+                
+                # Get first page text for more reliable extraction
+                first_page_text = ""
+                if len(pdf.pages) > 0:
+                    first_page = pdf.pages[0]
+                    first_page_text = first_page.extract_text() or ""
+                
+                # Find the section between "CUENTA DE CHEQUES" and "GRAFICO CUENTA DE CHEQUES"
+                cuenta_match = re.search(r'CUENTA\s+DE\s+CHEQUES', first_page_text, re.I)
+                grafico_match = re.search(r'GRAFICO\s+CUENTA\s+DE\s+CHEQUES', first_page_text, re.I)
+                
+                if cuenta_match and grafico_match:
+                    # Extract the section text
+                    section_start = cuenta_match.start()
+                    section_end = grafico_match.start()
+                    section_text = first_page_text[section_start:section_end]
+                    
+                    # Pattern: "+ DEPOSITOS 821,646.20" or "+DEPOSITOS 821,646.20"
+                    if not summary_data['total_depositos'] or not summary_data['total_abonos']:
+                        match = re.search(r'[+\s]+DEPOSITOS\s+([\d,\.]+)', section_text, re.I)
+                        if match:
+                            depositos = normalize_amount_str(match.group(1))
+                            #print(f"✅ Santander: Encontrado DEPOSITOS: ${depositos:,.2f}")
+                            if depositos > 0:
+                                summary_data['total_depositos'] = depositos
+                                summary_data['total_abonos'] = depositos
+                    
+                    # Pattern: "- RETIROS 820,238.73" or "-RETIROS 820,238.73"
+                    if not summary_data['total_retiros'] or not summary_data['total_cargos']:
+                        match = re.search(r'[-\s]+RETIROS\s+([\d,\.]+)', section_text, re.I)
+                        if match:
+                            retiros = normalize_amount_str(match.group(1))
+                            #print(f"✅ Santander: Encontrado RETIROS: ${retiros:,.2f}")
+                            if retiros > 0:
+                                summary_data['total_retiros'] = retiros
+                                summary_data['total_cargos'] = retiros
+                    
+                    # Pattern: "SALDO ACTUAL 1,417.18" or "= SALDO ACTUAL 1,417.18"
+                    if not summary_data['saldo_final']:
+                        match = re.search(r'(?:=\s*)?SALDO\s+ACTUAL\s+([\d,\.]+)', section_text, re.I)
+                        if match:
+                            saldo = normalize_amount_str(match.group(1))
+                            #print(f"✅ Santander: Encontrado SALDO ACTUAL: ${saldo:,.2f}")
+                            if saldo > 0:
+                                summary_data['saldo_final'] = saldo
+                else:
+                    # Fallback: search in all text if section markers not found
+                    #print(f"⚠️  No se encontró sección CUENTA DE CHEQUES, buscando en todo el texto...")
+                    full_text = all_text
+                    
+                    # Pattern: "+ DEPOSITOS 821,646.20"
+                    if not summary_data['total_depositos'] or not summary_data['total_abonos']:
+                        match = re.search(r'[+\s]+DEPOSITOS\s+([\d,\.]+)', full_text, re.I)
+                        if match:
+                            depositos = normalize_amount_str(match.group(1))
+                            if depositos > 0:
+                                summary_data['total_depositos'] = depositos
+                                summary_data['total_abonos'] = depositos
+                    
+                    # Pattern: "- RETIROS 820,238.73"
+                    if not summary_data['total_retiros'] or not summary_data['total_cargos']:
+                        match = re.search(r'[-\s]+RETIROS\s+([\d,\.]+)', full_text, re.I)
+                        if match:
+                            retiros = normalize_amount_str(match.group(1))
+                            if retiros > 0:
+                                summary_data['total_retiros'] = retiros
+                                summary_data['total_cargos'] = retiros
+                    
+                    # Pattern: "SALDO ACTUAL 1,417.18"
+                    if not summary_data['saldo_final']:
+                        match = re.search(r'(?:=\s*)?SALDO\s+ACTUAL\s+([\d,\.]+)', full_text, re.I)
+                        if match:
+                            saldo = normalize_amount_str(match.group(1))
+                            if saldo > 0:
+                                summary_data['saldo_final'] = saldo
             
             elif bank_name == "Banorte":
                 # Banorte: 
