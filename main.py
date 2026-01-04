@@ -1765,6 +1765,7 @@ def main():
     # Extract movements using coordinate-based column detection
     # Special handling for Konfio: always use text-based extraction since data is not in fixed columns
     movement_rows = []  # Initialize to avoid UnboundLocalError
+    df_mov = None  # Initialize to avoid UnboundLocalError
     if bank_config['name'] == 'Konfio':
         # Use text-based extraction for Konfio
         movement_entries = group_entries_from_lines(movements_lines)
@@ -2397,7 +2398,9 @@ def main():
                         if has_saldo:
                             r['saldo'] = amounts_list[0]
 
-            df_mov = pd.DataFrame(movement_rows)
+        # Create df_mov from movement_rows if not already created
+        if df_mov is None:
+            df_mov = pd.DataFrame(movement_rows) if movement_rows else pd.DataFrame(columns=['fecha', 'descripcion', 'cargos', 'abonos', 'saldo'])
     else:
         # No coordinate-based extraction available, use raw text extraction
         movement_entries = group_entries_from_lines(movements_lines)
