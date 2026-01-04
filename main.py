@@ -81,10 +81,10 @@ BANK_CONFIGS = {
         "name": "Banorte",
         "columns": {
             "fecha": (54, 85),             # Columna Fecha de Operación
-            "descripcion": (87, 300),     # Columna Descripción
-            "cargos": (431, 489),          # Columna Cargos
-            "abonos": (353, 420),          # Columna Abonos
-            "saldo": (533, 553),           # Columna Saldo
+            "descripcion": (87, 167),     # Columna Descripción
+            "cargos": (450, 489),          # Columna Cargos
+            "abonos": (380, 420),          # Columna Abonos
+            "saldo": (533, 560),           # Columna Saldo
         }
     },
 
@@ -109,7 +109,7 @@ BANK_CONFIGS = {
             "saldo": (425, 472),           # Columna Saldo (ampliado ligeramente)
         }
     },
-        # Add more banks here as needed
+    # Add more banks here as needed
 }
 
 DEFAULT_BANK = "BBVA"
@@ -1132,7 +1132,7 @@ def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame
         # - "DIA MES" (01 ABR)
         # - "MES DIA" (ABR 01)
         # - "DIA MES AÑO" (06 mar 2023) - for Konfio
-        date_pattern = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:\s+\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
+        date_pattern = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:[\/\-\s]\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
         dec_amount_re = re.compile(r"\d{1,3}(?:[\.,\s]\d{3})*(?:[\.,]\d{2})")
         
         in_digitem_section = False
@@ -1202,7 +1202,8 @@ def extract_digitem_section(pdf_path: str, columns_config: dict) -> pd.DataFrame
                         break
                     
                     # Extract structured row using coordinates (same as Movements)
-                    row_data = extract_movement_row(row_words, columns_config)
+                    # Pass date_pattern to enable date/description separation
+                    row_data = extract_movement_row(row_words, columns_config, None, date_pattern)
                     
                     # Check if this row has a date (same logic as Movements)
                     fecha_val = str(row_data.get('fecha') or '')
@@ -1400,7 +1401,7 @@ def _extract_two_dates(txt):
     # - "DIA MES" (01 ABR)
     # - "MES DIA" (ABR 01)
     # - "DIA MES AÑO" (06 mar 2023) - for Konfio
-    date_pattern = re.compile(r"(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:\s+\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})", re.I)
+    date_pattern = re.compile(r"(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:[\/\-\s]\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})", re.I)
     found = date_pattern.findall(txt)
     if not found:
         return (None, None)
@@ -1563,7 +1564,7 @@ def split_pages_into_lines(pages: list) -> list:
 def group_entries_from_lines(lines):
     """Group lines into transaction entries: a line starting with a date begins a new entry."""
     # Pattern for dates: supports multiple formats including "DIA MES AÑO" (06 mar 2023)
-    day_re = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:\s+\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
+    day_re = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:[\/\-\s]\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
     entries = []
     for line in lines:
         if day_re.search(line):
@@ -1649,7 +1650,7 @@ def is_transaction_row(row_data):
     # Must have a date matching DD/MMM pattern
     # Pattern for dates: supports both "DIA MES" (01 ABR) and "MES DIA" (ABR 01) formats
     # Pattern for dates: supports multiple formats including "DIA MES AÑO" (06 mar 2023)
-    day_re = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:\s+\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
+    day_re = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:[\/\-\s]\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
     has_date = bool(day_re.search(fecha))
     
     # Must have at least one numeric amount
@@ -1658,10 +1659,14 @@ def is_transaction_row(row_data):
     return has_date and has_amount
 
 
-def extract_movement_row(words, columns):
+def extract_movement_row(words, columns, bank_name=None, date_pattern=None):
     """Extract a structured movement row from grouped words using coordinate-based column assignment."""
     row_data = {col: '' for col in columns.keys()}
     amounts = []
+    
+    # Pattern to detect dates (for separating date from description)
+    if date_pattern is None:
+        date_pattern = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:[\/\-\s]\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
     
     # Sort words by X coordinate within the row
     sorted_words = sorted(words, key=lambda w: w.get('x0', 0))
@@ -1677,6 +1682,48 @@ def extract_movement_row(words, columns):
         if m:
             amounts.append((m.group(), center))
 
+        # Check if word contains a date followed by description text (especially for Banorte)
+        # Example: "12-ENE-23EST EPIGMENIO" should be split into "12-ENE-23" and "EST EPIGMENIO"
+        date_match = date_pattern.search(text)
+        if date_match and 'fecha' in columns and 'descripcion' in columns:
+            date_text = date_match.group()
+            date_end_pos = date_match.end()
+            
+            # If there's text after the date, split it
+            if date_end_pos < len(text):
+                description_text = text[date_end_pos:].strip()
+                
+                # Check which column this word's center belongs to
+                fecha_col_center = None
+                descripcion_col_center = None
+                if 'fecha' in columns:
+                    fecha_x0, fecha_x1 = columns['fecha']
+                    fecha_col_center = (fecha_x0 + fecha_x1) / 2
+                if 'descripcion' in columns:
+                    descripcion_x0, descripcion_x1 = columns['descripcion']
+                    descripcion_col_center = (descripcion_x0 + descripcion_x1) / 2
+                
+                # If the word center is closer to fecha column, assign date to fecha and description to descripcion
+                # Otherwise, if it's closer to descripcion, still split them
+                if fecha_col_center is not None and descripcion_col_center is not None:
+                    dist_to_fecha = abs(center - fecha_col_center)
+                    dist_to_descripcion = abs(center - descripcion_col_center)
+                    
+                    # Always split: assign date to fecha column and description to descripcion column
+                    if row_data['fecha']:
+                        row_data['fecha'] += ' ' + date_text
+                    else:
+                        row_data['fecha'] = date_text
+                    
+                    if description_text:
+                        if row_data['descripcion']:
+                            row_data['descripcion'] += ' ' + description_text
+                        else:
+                            row_data['descripcion'] = description_text
+                    
+                    continue  # Skip normal assignment for this word
+        
+        # Normal column assignment
         col_name = assign_word_to_column(x0, x1, columns)
         if col_name:
             if row_data[col_name]:
@@ -1687,6 +1734,250 @@ def extract_movement_row(words, columns):
     # attach detected amounts for later disambiguation
     row_data['_amounts'] = amounts
     return row_data
+
+
+def split_row_if_multiple_movements(row_words, columns_config, date_pattern, bank_name=None):
+    """
+    Detect if a row contains multiple movements and split it into separate rows.
+    Returns a list of row_word lists (each representing one movement).
+    """
+    if not row_words or not columns_config:
+        return [row_words]
+    
+    # Find fecha column range if available
+    fecha_range = None
+    if 'fecha' in columns_config:
+        fecha_x0, fecha_x1 = columns_config['fecha']
+        fecha_range = (fecha_x0, fecha_x1)
+    
+    # Pattern to exclude hours (like "17:47:53") from being detected as dates
+    # Hours have format HH:MM:SS or HH:MM
+    hour_pattern = re.compile(r'\b\d{1,2}:\d{2}(?::\d{2})?\b')
+    
+    # Find all words that contain dates (either in fecha column or anywhere if no fecha column)
+    date_words = []
+    for word in row_words:
+        text = word.get('text', '')
+        x0 = word.get('x0', 0)
+        x1 = word.get('x1', 0)
+        center = (x0 + x1) / 2
+        
+        # Skip if this looks like a time (hour:minute:second)
+        if hour_pattern.search(text):
+            continue
+        
+        # Check if word contains a date pattern
+        # For Banorte, also check if the word contains multiple dates (like "17-ENE-2317-ENE-23")
+        date_matches = date_pattern.findall(text)
+        if date_matches:
+            # If fecha column is defined, only consider dates in that column
+            if fecha_range:
+                if fecha_range[0] <= center <= fecha_range[1]:
+                    # If multiple dates found in same word, create separate entries for each
+                    if len(date_matches) > 1:
+                        for i, date_match in enumerate(date_matches):
+                            # Create a virtual word entry for each date
+                            date_words.append({
+                                'text': date_match,
+                                'x0': x0,
+                                'x1': x1,
+                                'top': word.get('top', 0) + (i * 0.1),  # Slight offset to distinguish
+                                'original_word': word
+                            })
+                    else:
+                        date_words.append(word)
+            else:
+                # No fecha column defined, consider any date
+                if len(date_matches) > 1:
+                    for i, date_match in enumerate(date_matches):
+                        date_words.append({
+                            'text': date_match,
+                            'x0': x0,
+                            'x1': x1,
+                            'top': word.get('top', 0) + (i * 0.1),
+                            'original_word': word
+                        })
+                else:
+                    date_words.append(word)
+    
+    # If we found multiple dates, split the row
+    if len(date_words) > 1:
+        # Sort date words by Y coordinate
+        date_words.sort(key=lambda w: w.get('top', 0))
+        
+        # Get Y positions of all dates (except first)
+        split_y_positions = [w.get('top', 0) for w in date_words[1:]]
+        
+        # Split row_words into multiple rows based on date positions
+        split_rows = []
+        current_split = []
+        
+        # Sort all words by Y coordinate
+        sorted_words = sorted(row_words, key=lambda w: w.get('top', 0))
+        
+        for word in sorted_words:
+            word_y = word.get('top', 0)
+            
+            # Check if this word starts a new movement (after a date position)
+            if split_y_positions and word_y >= split_y_positions[0] - 3:
+                if current_split:
+                    split_rows.append(current_split)
+                current_split = [word]
+                # Remove the first split position as we've used it
+                split_y_positions.pop(0)
+            else:
+                if current_split is None:
+                    current_split = []
+                current_split.append(word)
+        
+        if current_split:
+            split_rows.append(current_split)
+        
+        return split_rows if len(split_rows) > 1 else [row_words]
+    
+    # Check if there are multiple amounts in numeric columns (cargos, abonos, saldo)
+    # This indicates multiple movements even if there's only one date
+    numeric_cols = ['cargos', 'abonos', 'saldo']
+    numeric_ranges = {}
+    for col in numeric_cols:
+        if col in columns_config:
+            x0, x1 = columns_config[col]
+            numeric_ranges[col] = (x0, x1)
+    
+    if numeric_ranges:
+        # Count amounts in each numeric column
+        amounts_per_col = {col: [] for col in numeric_ranges.keys()}
+        
+        for word in row_words:
+            text = word.get('text', '')
+            x0 = word.get('x0', 0)
+            x1 = word.get('x1', 0)
+            center = (x0 + x1) / 2
+            
+            # Check if word contains an amount
+            if DEC_AMOUNT_RE.search(text):
+                # Find which numeric column this amount belongs to
+                for col, (col_x0, col_x1) in numeric_ranges.items():
+                    if col_x0 <= center <= col_x1:
+                        amounts_per_col[col].append((word, word.get('top', 0)))
+                        break
+        
+        # Check if any column has multiple amounts at different Y positions
+        # This suggests multiple movements
+        y_positions = set()
+        words_with_multiple_amounts = []
+        
+        for col, amounts in amounts_per_col.items():
+            if len(amounts) > 1:
+                # Check if amounts are at different Y positions (more than 2 pixels apart)
+                amount_ys = sorted([y for _, y in amounts])
+                for i in range(len(amount_ys) - 1):
+                    if abs(amount_ys[i] - amount_ys[i + 1]) > 2:
+                        y_positions.add(amount_ys[i + 1])
+                # For Banorte, be more aggressive: if we have multiple amounts in same column,
+                # it's likely multiple movements even if Y positions are close
+                if bank_name == 'Banorte' and len(amounts) > 1:
+                    # Check if amounts are in different words (not just different Y positions)
+                    amount_words = [w for w, _ in amounts]
+                    unique_words = len(set(id(w) for w in amount_words))
+                    if unique_words > 1:
+                        # Multiple amounts in different words - likely multiple movements
+                        # Use the Y position of the second amount as split point
+                        if len(amount_ys) > 1:
+                            y_positions.add(amount_ys[1])
+        
+        # Also check if a single word contains multiple amounts (like "$2,572.02 0.00 125,000.00")
+        # This is a strong indicator of multiple movements combined
+        for word in row_words:
+            text = word.get('text', '')
+            # Count how many distinct amounts are in this word
+            amount_matches = DEC_AMOUNT_RE.findall(text)
+            if len(amount_matches) > 1:
+                # Multiple amounts in one word - this suggests multiple movements
+                words_with_multiple_amounts.append(word)
+                # Use the word's Y position as a split point
+                y_positions.add(word.get('top', 0))
+        
+        # For Banorte, also check if we have multiple pairs of amounts (Abonos + Saldo)
+        # This is a strong indicator of multiple movements
+        if bank_name == 'Banorte' and 'abonos' in numeric_ranges and 'saldo' in numeric_ranges:
+            abonos_amounts = amounts_per_col.get('abonos', [])
+            saldo_amounts = amounts_per_col.get('saldo', [])
+            # If we have multiple abonos and multiple saldos, likely multiple movements
+            if len(abonos_amounts) > 1 and len(saldo_amounts) > 1:
+                # Use Y positions of second and subsequent amounts as split points
+                abonos_ys = sorted([y for _, y in abonos_amounts])
+                saldo_ys = sorted([y for _, y in saldo_amounts])
+                for y_list in [abonos_ys, saldo_ys]:
+                    if len(y_list) > 1:
+                        for i in range(1, len(y_list)):
+                            y_positions.add(y_list[i])
+        
+        # If we found multiple Y positions with amounts OR words with multiple amounts, split the row
+        if len(y_positions) > 0 or len(words_with_multiple_amounts) > 0:
+            split_y_positions = sorted(list(y_positions))
+            split_rows = []
+            current_split = []
+            
+            sorted_words = sorted(row_words, key=lambda w: w.get('top', 0))
+            
+            for word in sorted_words:
+                word_y = word.get('top', 0)
+                
+                # Check if this word starts a new movement
+                if split_y_positions and word_y >= split_y_positions[0] - 3:
+                    if current_split:
+                        split_rows.append(current_split)
+                    current_split = [word]
+                    split_y_positions.pop(0)
+                else:
+                    if current_split is None:
+                        current_split = []
+                    current_split.append(word)
+            
+            if current_split:
+                split_rows.append(current_split)
+            
+            return split_rows if len(split_rows) > 1 else [row_words]
+        
+        # If we found words with multiple amounts but couldn't split by Y position,
+        # we still need to handle this case. The amounts will be extracted separately
+        # in extract_movement_row and assigned to columns, but we should try to create
+        # separate rows if possible based on the structure of the data.
+        # For now, if we can't split by Y, we'll keep the row as is and let the
+        # amount assignment logic handle it (though this may result in multiple amounts
+        # in the same column, which is what we're trying to avoid)
+        if len(words_with_multiple_amounts) > 0:
+            # Try to split based on the positions of words with multiple amounts
+            # Sort words by Y and try to find natural break points
+            sorted_all_words = sorted(row_words, key=lambda w: w.get('top', 0))
+            multi_amount_ys = sorted([w.get('top', 0) for w in words_with_multiple_amounts])
+            
+            if len(multi_amount_ys) > 0:
+                # Use the first multi-amount word position as a split point
+                split_y = multi_amount_ys[0]
+                split_rows = []
+                current_split = []
+                
+                for word in sorted_all_words:
+                    word_y = word.get('top', 0)
+                    if word_y >= split_y - 2 and current_split:
+                        # Start a new row
+                        split_rows.append(current_split)
+                        current_split = [word]
+                    else:
+                        if current_split is None:
+                            current_split = []
+                        current_split.append(word)
+                
+                if current_split:
+                    split_rows.append(current_split)
+                
+                if len(split_rows) > 1:
+                    return split_rows
+    
+    # No splitting needed
+    return [row_words]
 
 
 def main():
@@ -1751,8 +2042,10 @@ def main():
     # - "DIA MES" (01 ABR)
     # - "MES DIA" (ABR 01)
     # - "DIA MES AÑO" (06 mar 2023) - for Konfio
+    # - "DIA-MES-AÑO" (12-ENE-23) - for Banorte
     # Common month abbreviations: ENE, FEB, MAR, ABR, MAY, JUN, JUL, AGO, SEP, OCT, NOV, DIC
-    day_re = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:\s+\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
+    # Updated pattern to also match "DIA-MES-AÑO" format with hyphens (e.g., "12-ENE-23")
+    day_re = re.compile(r"\b(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:[\/\-\s]\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})\b", re.I)
     # match lines that contain both 'fecha' AND 'descripcion', OR lines that contain 'concepto'
     # Implemented with lookahead for the AND case, and an alternation for 'concepto'
     header_keywords_re = re.compile(r"(?:(?=.*\bfecha\b)(?=.*\bdescripcion\b))|(?:\bconcepto\b)", re.I)
@@ -1764,7 +2057,9 @@ def main():
     movements_lines = []
     
     # For Inbursa, movements start after "DETALLE DE MOVIMIENTOS" and the header line
+    # For Banorte, movements start after "DETALLE DE MOVIMIENTOS (PESOS)"
     inbursa_detalle_pattern = None
+    banorte_detalle_pattern = None
     detalle_found = False
     header_line_skipped = False
     if bank_config['name'] == 'Inbursa':
@@ -1772,6 +2067,8 @@ def main():
         # Pattern to detect the header line: "FECHA REFERENCIA CONCEPTO CARGOS ABONOS SALDO"
         # Make it more flexible to handle variations in spacing
         inbursa_header_pattern = re.compile(r'FECHA.*?REFERENCIA.*?CONCEPTO.*?CARGOS.*?ABONOS.*?SALDO', re.I)
+    elif bank_config['name'] == 'Banorte':
+        banorte_detalle_pattern = re.compile(r'DETALLE\s+DE\s+MOVIMIENTOS\s*\(PESOS\)', re.I)
     
     for p in pages_lines:
         if not movement_start_found:
@@ -1782,18 +2079,32 @@ def main():
                         detalle_found = True
                         continue  # Skip the "DETALLE DE MOVIMIENTOS" line itself
                 
-                # After finding "DETALLE DE MOVIMIENTOS", skip the header line
+                # For Banorte, find "DETALLE DE MOVIMIENTOS (PESOS)"
+                if banorte_detalle_pattern and not detalle_found:
+                    if banorte_detalle_pattern.search(ln):
+                        detalle_found = True
+                        continue  # Skip the "DETALLE DE MOVIMIENTOS (PESOS)" line itself
+                
+                # After finding "DETALLE DE MOVIMIENTOS", skip the header line (for Inbursa)
                 if inbursa_detalle_pattern and detalle_found and not header_line_skipped:
                     if inbursa_header_pattern and inbursa_header_pattern.search(ln):
                         header_line_skipped = True
                         continue  # Skip the header line
                 
-                # After finding "DETALLE DE MOVIMIENTOS" and skipping header for Inbursa, or for other banks, look for date/header
-                if (inbursa_detalle_pattern and detalle_found and header_line_skipped) or not inbursa_detalle_pattern:
+                # After finding "DETALLE DE MOVIMIENTOS" and skipping header for Inbursa, or for Banorte, or for other banks, look for date/header
+                if (inbursa_detalle_pattern and detalle_found and header_line_skipped) or (banorte_detalle_pattern and detalle_found) or (not inbursa_detalle_pattern and not banorte_detalle_pattern):
                     # For Inbursa, only look for dates (not headers, as we already skipped the header line)
-                    # For other banks, look for dates or headers
                     if inbursa_detalle_pattern:
                         # For Inbursa, only start when we find a date (actual movement row)
+                        if day_re.search(ln):
+                            movement_start_found = True
+                            movement_start_page = p['page']
+                            movement_start_index = i
+                            # collect from this line onward in this page
+                            movements_lines.extend(p['lines'][i:])
+                            break
+                    elif banorte_detalle_pattern:
+                        # For Banorte, start when we find a date (actual movement row)
                         if day_re.search(ln):
                             movement_start_found = True
                             movement_start_page = p['page']
@@ -1956,6 +2267,9 @@ def main():
         elif bank_config['name'] == 'Santander':
             # Santander: "TOTAL 821,646.20 820,238.73 1,417.18" - indicates end of movements table
             movement_end_pattern = re.compile(r'^TOTAL\s+[\d,\.]+\s+[\d,\.]+\s+[\d,\.]+', re.I)
+        elif bank_config['name'] == 'Banorte':
+            # Banorte: "INVERSION ENLACE NEGOCIOS" - indicates end of movements table
+            movement_end_pattern = re.compile(r'INVERSION\s+ENLACE\s+NEGOCIOS', re.I)
         
         extraction_stopped = False
         for page_data in extracted_data:
@@ -1971,9 +2285,26 @@ def main():
             # Check if this page contains movements (page >= movement_start_page if found)
             if movement_start_found and page_num < movement_start_page:
                 continue
-            
+        
             # Group words by row
-            word_rows = group_words_by_row(words)
+            # Use y_tolerance=3 for all banks to avoid grouping multiple movements into one row
+            # The split_row_if_multiple_movements function will handle cases where movements are still grouped
+            word_rows = group_words_by_row(words, y_tolerance=3)
+            
+            # Check if grouped rows contain multiple movements and split them
+            # This applies to all banks to ensure each movement is in its own row
+            if columns_config:
+                split_rows = []
+                for row_words in word_rows:
+                    if not row_words:
+                        continue
+                    
+                    # Use the generic function to split rows with multiple movements
+                    # Pass bank_name to enable bank-specific logic
+                    split_result = split_row_if_multiple_movements(row_words, columns_config, date_pattern, bank_config['name'])
+                    split_rows.extend(split_result)
+                
+                word_rows = split_rows
             
             for row_words in word_rows:
                 if not row_words or extraction_stopped:
@@ -1988,7 +2319,8 @@ def main():
                         break
 
                 # Extract structured row using coordinates
-                row_data = extract_movement_row(row_words, columns_config)
+                # Pass bank_name and date_pattern to enable date/description separation
+                row_data = extract_movement_row(row_words, columns_config, bank_config['name'], date_pattern)
 
                 # Determine if this row starts a new movement (contains a date)
                 # If columns_config is empty, check all words for dates
@@ -2003,7 +2335,7 @@ def main():
                     # A new movement begins when the 'fecha' column contains a date token.
                     fecha_val = str(row_data.get('fecha') or '')
                     has_date = bool(date_pattern.search(fecha_val))
-                
+                    
                 # Check if row has valid data (date, description, or amounts)
                 has_valid_data = has_date
                 if not has_valid_data:
@@ -2117,11 +2449,11 @@ def main():
                                 prev['descripcion'] = (prev.get('descripcion') or '') + ' ' + cont_text
                             else:
                                 prev['descripcion'] = cont_text
-                else:
-                    # No previous movement and no date - skip this row
-                    # Only rows with dates should be added to movements
-                    # Rows without dates are only used as continuation of previous rows
-                    pass
+                    else:
+                        # No previous movement and no date - skip this row
+                        # Only rows with dates should be added to movements
+                        # Rows without dates are only used as continuation of previous rows
+                        pass
 
     # Process summary lines to format them properly
     def format_summary_line(line):
@@ -2308,7 +2640,7 @@ def main():
             existing_cargos = r.get('cargos', '').strip()
             existing_abonos = r.get('abonos', '').strip()
             existing_saldo = r.get('saldo', '').strip()
-            
+
             # If columns already have numbers, keep them but prefer reassignment
             # We'll assign each detected amount to the appropriate numeric column
             # ONLY if it's within the column's coordinate range
@@ -2385,20 +2717,20 @@ def main():
                         # Only skip if in description range AND NOT in any numeric column range
                         if not in_desc_range or in_num_range:
                             existing = r.get(nearest, '').strip()
-                            if existing:
-                                # If existing is a valid amount, preserve it
-                                if DEC_AMOUNT_RE.search(existing):
-                                    # Existing is a valid amount, preserve it
-                                    assigned = True
-                                    break
-                                elif amt_text not in existing:
-                                    r[nearest] = (existing + ' ' + amt_text).strip()
-                                    assigned = True
-                                    break
-                            else:
-                                r[nearest] = amt_text
-                                assigned = True
-                                break
+                if existing:
+                    # If existing is a valid amount, preserve it
+                    if DEC_AMOUNT_RE.search(existing):
+                        # Existing is a valid amount, preserve it
+                        assigned = True
+                        break
+                    elif amt_text not in existing:
+                        r[nearest] = (existing + ' ' + amt_text).strip()
+                        assigned = True
+                        break
+                else:
+                    r[nearest] = amt_text
+                    assigned = True
+                    break
                 
                 # Only skip if amount is in description range AND NOT assigned to any numeric column
                 # This prevents amounts in cargos/abonos/saldo from being skipped
@@ -2415,7 +2747,7 @@ def main():
             # cleanup helper key
             if '_amounts' in r:
                 del r['_amounts']
-            
+
             # Debug: Print row data for BBVA to see what's happening with cargos
             if bank_config['name'] == 'BBVA' and len([x for x in movement_rows if x.get('cargos')]) <= 5:  # Only print first 5 rows with cargos for debugging
                 cargos_val = r.get('cargos', '')
@@ -2545,7 +2877,7 @@ def main():
     # - "DIA MES" (01 ABR)
     # - "MES DIA" (ABR 01)
     # - "DIA MES AÑO" (06 mar 2023) - for Konfio
-    date_pattern = re.compile(r"(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:\s+\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})", re.I)
+    date_pattern = re.compile(r"(?:(?:0[1-9]|[12][0-9]|3[01])(?:[\/\-\s])[A-Za-z]{3}(?:[\/\-\s]\d{2,4})?|[A-Za-z]{3}(?:[\/\-\s])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])\s+[A-Za-z]{3}\s+\d{2,4})", re.I)
 
     def _extract_two_dates(txt):
         if not txt or not isinstance(txt, str):
@@ -2693,7 +3025,7 @@ def main():
     # Rename "Fecha Liq" to "Fecha Liq." for BBVA if needed
     if bank_config['name'] == 'BBVA' and 'Fecha Liq' in df_mov.columns:
         df_mov = df_mov.rename(columns={'Fecha Liq': 'Fecha Liq.'})
-    
+
     # Reorder columns according to bank type
     if bank_config['name'] == 'BBVA':
         # For BBVA: Fecha Oper, Fecha Liq., Descripción, Cargos, Abonos, Operación, Liquidación
