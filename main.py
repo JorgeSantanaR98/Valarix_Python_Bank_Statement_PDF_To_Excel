@@ -1888,10 +1888,13 @@ def main():
         movement_rows = []
         # regex to detect decimal-like amounts (used to strip amounts from descriptions and detect amounts)
         dec_amount_re = re.compile(r"\d{1,3}(?:[\.,\s]\d{3})*(?:[\.,]\d{2})")
-        # Pattern to detect end of movements table for Banamex
+        # Pattern to detect end of movements table for specific banks
         movement_end_pattern = None
         if bank_config['name'] == 'Banamex':
             movement_end_pattern = re.compile(r'SALDO\s+MINIMO\s+REQUERIDO', re.I)
+        elif bank_config['name'] == 'Santander':
+            # Santander: "TOTAL 821,646.20 820,238.73 1,417.18" - indicates end of movements table
+            movement_end_pattern = re.compile(r'^TOTAL\s+[\d,\.]+\s+[\d,\.]+\s+[\d,\.]+', re.I)
         
         extraction_stopped = False
         for page_data in extracted_data:
@@ -1915,11 +1918,11 @@ def main():
                 if not row_words or extraction_stopped:
                     continue
 
-                # Check for end pattern (for Banamex)
+                # Check for end pattern (for Banamex, Santander, etc.)
                 if movement_end_pattern:
                     all_text = ' '.join([w.get('text', '') for w in row_words])
                     if movement_end_pattern.search(all_text):
-                        #print(f"🛑 Fin de tabla de movimientos detectado en página {page_num}: 'SALDO MINIMO REQUERIDO'")
+                        #print(f"🛑 Fin de tabla de movimientos detectado en página {page_num}")
                         extraction_stopped = True
                         break
 
